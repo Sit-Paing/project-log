@@ -357,7 +357,7 @@ tr.tl.l2 td.c-proc .tl-tg{display:none}
   var ALL = '__all__';
   var view = lsGet('projectlog.view') === 'timeline' ? 'timeline' : 'schedule';
   var tlOpen = (function(){ try { return JSON.parse(lsGet('projectlog.tl2') || '{}') || {}; } catch(e){ return {}; } })();
-  var filters = { q: '', client: '', who: '', group: '', status: '', time: '', from: '', to: '' };
+  var filters = { q: '', client: '', project: '', who: '', group: '', status: '', time: '', from: '', to: '' };
   var DW = (function(){ var n = parseInt(lsGet('projectlog.dw'), 10); return [20, 28, 40, 56].indexOf(n) >= 0 ? n : 28; })();
 
   var appEl = document.getElementById('app');
@@ -520,7 +520,7 @@ tr.tl.l2 td.c-proc .tl-tg{display:none}
     return null;
   }
   function filtersActive(){
-    return !!(filters.q || filters.client || filters.who || filters.group || filters.status || filters.time);
+    return !!(filters.q || filters.client || filters.project || filters.who || filters.group || filters.status || filters.time);
   }
   function filterTasks(list){
     var q = filters.q.trim().toLowerCase(), w = windowOf(), pm = {};
@@ -528,6 +528,7 @@ tr.tl.l2 td.c-proc .tl-tg{display:none}
     return list.filter(function(t){
       var p = pm[t.projectId] || {};
       if(filters.client && (p.client || '') !== filters.client) return false;
+      if(filters.project && t.projectId !== filters.project) return false;
       if(filters.who && (t.incharge || '') !== filters.who) return false;
       if(filters.group && t.group !== filters.group) return false;
       if(filters.status){
@@ -568,10 +569,11 @@ tr.tl.l2 td.c-proc .tl-tg{display:none}
   function selHTML(id, label, inner){
     return '<div class="fl sel"><label for="' + id + '">' + label + '</label><select id="' + id + '">' + inner + '</select></div>';
   }
-  function filterBarHTML(lists, shown, total){
+  function filterBarHTML(lists, shown, total, isAll){
     var h = '<section class="filters" aria-label="Filters">' +
       '<div class="fl q"><label for="flt-q">Search</label><input id="flt-q" type="search" placeholder="Project, client, PO, process, person" value="' + esc(filters.q) + '" autocomplete="off"></div>' +
       selHTML('flt-client', 'Client', optHTML(lists.clients, filters.client, 'All clients')) +
+      (isAll ? selHTML('flt-project', 'Project', '<option value="">All projects</option>' + projects.filter(function(x){ return !filters.client || (x.client || '') === filters.client; }).map(function(x){ return '<option value="' + esc(x.id) + '"' + (x.id === filters.project ? ' selected' : '') + '>' + esc(x.name || 'Untitled') + '</option>'; }).join('')) : '') +
       selHTML('flt-who', 'In charge', optHTML(lists.whos, filters.who, 'Everyone')) +
       selHTML('flt-group', 'Main process', optHTML(lists.groups, filters.group, 'All processes')) +
       selHTML('flt-status', 'Status', pairsHTML(STATUS_OPTS, filters.status)) +
@@ -679,6 +681,7 @@ tr.tl.l2 td.c-proc .tl-tg{display:none}
     if(filters.client && lists.clients.indexOf(filters.client) < 0) filters.client = '';
     if(filters.who && lists.whos.indexOf(filters.who) < 0) filters.who = '';
     if(filters.group && lists.groups.indexOf(filters.group) < 0) filters.group = '';
+    if(filters.project && (isAll ? !projects.some(function(x){ return x.id === filters.project; }) : true)) filters.project = '';
     var list = filterTasks(scope);
 
     var dates = [];
@@ -715,7 +718,7 @@ tr.tl.l2 td.c-proc .tl-tg{display:none}
 
     if(!isAll) html += subjectHTML(p);
 
-    html += filterBarHTML(lists, list.length, scope.length);
+    html += filterBarHTML(lists, list.length, scope.length, isAll);
 
     html += '<div class="bar-row"><div class="legend"><span><i class="sw plan"></i>Plan</span><span><i class="sw actual"></i>Actual</span><span><i class="sw today"></i>Today, ' + fmtY(TODAY) + '</span></div>' +
       '<div class="bar-actions">' + (canEdit && !isAll ? '<button class="btn" data-act="add-task" data-group="">Add process</button>' : '') + '</div></div>';
@@ -1272,7 +1275,7 @@ tr.tl.l2 td.c-proc .tl-tg{display:none}
       lsSet('projectlog.tl2', JSON.stringify(tlOpen)); render(); return;
     }
     if(act === 'cal-today'){ var tw = appEl.querySelector('.sched-wrap'); if(tw) scrollToToday(tw, true); return; }
-    if(act === 'reset-filters'){ filters = { q: '', client: '', who: '', group: '', status: '', time: '', from: '', to: '' }; needScroll = true; render(); return; }
+    if(act === 'reset-filters'){ filters = { q: '', client: '', project: '', who: '', group: '', status: '', time: '', from: '', to: '' }; needScroll = true; render(); return; }
     if(act === 'open-project'){ selectProject(el.dataset.id); window.scrollTo(0, 0); return; }
     if(!canEdit) return;
     if(act === 'new-project') openProjectModal(null);
