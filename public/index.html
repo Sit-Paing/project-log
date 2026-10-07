@@ -302,6 +302,16 @@ input[type=date]{min-height:38px;max-width:100%}
 }
 @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
 .period-note{margin:0;color:var(--muted);padding:10px 14px;background:var(--surface);border:1px dashed var(--line);border-radius:8px}
+.view-seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--surface)}
+.view-seg button{border:0;background:transparent;padding:7px 14px;cursor:pointer;font-weight:500}
+.view-seg button.on{background:var(--accent);color:var(--accent-ink)}
+.tl-name{display:flex;align-items:flex-start;gap:2px}
+.tl-tg{background:none;border:0;cursor:pointer;color:var(--ink);font-size:14px;padding:0 6px 0 0;line-height:1.3;min-width:22px}
+.pname-sub{display:block;font-size:11px;color:var(--muted);overflow-wrap:anywhere}
+tr.tl.l0 .pname{font-size:14px}
+tr.tl.l1 td.c-proc{padding-left:26px}
+tr.tl.l1 .pname{font-weight:500}
+@media (pointer:coarse){.view-seg button{min-height:42px}}
 </style>
 </head>
 <body>
@@ -341,6 +351,8 @@ input[type=date]{min-height:38px;max-width:100%}
   var editKey = '', canEdit = false;
   var modalState = null;
   var ALL = '__all__';
+  var view = lsGet('projectlog.view') === 'timeline' ? 'timeline' : 'schedule';
+  var tlOpen = (function(){ try { return JSON.parse(lsGet('projectlog.tl') || '{}') || {}; } catch(e){ return {}; } })();
   var filters = { q: '', client: '', who: '', group: '', status: '', time: '', from: '', to: '' };
   var DW = (function(){ var n = parseInt(lsGet('projectlog.dw'), 10); return [20, 28, 40, 56].indexOf(n) >= 0 ? n : 28; })();
 
@@ -392,7 +404,7 @@ input[type=date]{min-height:38px;max-width:100%}
   }
 
   function selectProject(id){
-    selectedId = id; needScroll = true;
+    selectedId = id; needScroll = true; view = 'schedule'; lsSet('projectlog.view', 'schedule');
     if(id) lsSet('projectlog.selected', id);
     if(id !== ALL && filters.client){
       var pr = projects.filter(function(x){ return x.id === id; })[0];
@@ -625,8 +637,12 @@ input[type=date]{min-height:38px;max-width:100%}
     }
     if(!projectsLoaded){ appEl.innerHTML = '<div class="empty big"><p>Loading projects…</p></div>'; return; }
 
-    var isAll = selectedId === ALL;
+    var isTL = view === 'timeline' && projects.length > 0;
+    var isAll = selectedId === ALL || isTL;
     var topBar = '<header class="top"><div class="brand">' + logoHTML() + '</div>';
+    if(projects.length){
+      topBar += '<div class="view-seg" role="group" aria-label="View"><button data-act="view-schedule" class="' + (isTL ? '' : 'on') + '" aria-pressed="' + (!isTL) + '">Schedule</button><button data-act="view-timeline" class="' + (isTL ? 'on' : '') + '" aria-pressed="' + isTL + '">Timeline</button></div>';
+    }
     if(projects.length){
       var opts = '';
       if(projects.length > 1) opts += '<option value="' + ALL + '"' + (isAll ? ' selected' : '') + '>All projects (' + projects.length + ')</option>';
@@ -654,7 +670,7 @@ input[type=date]{min-height:38px;max-width:100%}
     }
 
     /* filters (drop values that no longer exist in this view) */
-    var scope = tasks;
+    var scope = isTL ? allTasks : tasks;
     var lists = { clients: uniq(projects.map(function(x){ return x.client; })), whos: uniq(scope.map(function(t){ return t.incharge; })), groups: uniq(scope.map(function(t){ return t.group; })) };
     if(filters.client && lists.clients.indexOf(filters.client) < 0) filters.client = '';
     if(filters.who && lists.whos.indexOf(filters.who) < 0) filters.who = '';
@@ -674,7 +690,7 @@ input[type=date]{min-height:38px;max-width:100%}
       var pids = {}, cls = {};
       list.forEach(function(t){ pids[t.projectId] = 1; });
       projects.forEach(function(x){ if(pids[x.id] && x.client) cls[x.client] = 1; });
-      html += '<section class="ph"><div class="ph-main"><h1>All projects</h1>' +
+      html += '<section class="ph"><div class="ph-main"><h1>' + (isTL ? 'Project timeline' : 'All projects') + '</h1>' +
         '<dl class="meta"><div><dt>Projects</dt><dd class="mono">' + Object.keys(pids).length + '</dd></div>' +
         '<div><dt>Clients</dt><dd class="mono">' + Object.keys(cls).length + '</dd></div>' +
         '<div><dt>Planned</dt><dd class="mono">' + esc(sched) + '</dd></div></dl></div></section>';
@@ -707,11 +723,12 @@ input[type=date]{min-height:38px;max-width:100%}
           : '<p>No processes have been added yet.</p>') + '</div></div>';
     } else if(!list.length && windowOf()){
       html += '<p class="period-note">No processes fall in this period. The calendar below shows it empty; change the time filter or press Reset filters.</p>' +
-        calNavHTML() + '<div class="sched-wrap" tabindex="0" aria-label="Schedule calendar" style="--dw:' + DW + 'px">' + tableHTML(list, isAll) + '</div>';
+        calNavHTML() + '<div class="sched-wrap" tabindex="0" aria-label="Schedule calendar" style="--dw:' + DW + 'px">' + (isTL ? timelineHTML(list) : tableHTML(list, isAll)) + '</div>';
     } else if(!list.length){
       html += '<div class="sched-wrap"><div class="empty"><h2>Nothing matches these filters</h2><p>Try a wider time range or clear a filter.</p><div class="row"><button class="btn primary" data-act="reset-filters">Reset filters</button></div></div></div>';
     } else {
-      html += calNavHTML() + '<div class="sched-wrap" tabindex="0" aria-label="Schedule calendar" style="--dw:' + DW + 'px">' + tableHTML(list, isAll) + '</div>';
+      html += (isTL ? '<p class="period-note">One row per project. Press ▸ to show its main processes, or Open to see every sub process.<button class="btn" data-act="tl-all" style="margin-left:10px">Expand / collapse all</button></p>' : '') +
+        calNavHTML() + '<div class="sched-wrap" tabindex="0" aria-label="Schedule calendar" style="--dw:' + DW + 'px">' + (isTL ? timelineHTML(list) : tableHTML(list, isAll)) + '</div>';
     }
     if(canEdit) html += helpHTML();
     appEl.innerHTML = html;
@@ -726,6 +743,74 @@ input[type=date]{min-height:38px;max-width:100%}
       var f2 = document.getElementById(fid);
       if(f2){ f2.focus(); try { f2.setSelectionRange(fs, fe); } catch(x){} }
     }
+  }
+
+
+  /* ---------- timeline: one row per project, expandable to main processes ---------- */
+  function agg(ts){
+    var ps = null, pd = null, as = null, ae = null, done = 0, late = 0, started = 0, live = false, who = {};
+    ts.forEach(function(t){
+      var a = parse(t.planStart), b = parse(t.planDue), x = parse(t.actStart), y = parse(t.actEnd), st = statusOf(t);
+      [a, b].forEach(function(n){ if(n != null){ if(ps == null || n < ps) ps = n; if(pd == null || n > pd) pd = n; } });
+      if(x != null){
+        started++; if(as == null || x < as) as = x;
+        var e = y != null ? y : Math.max(x, TODAY); if(y == null) live = true;
+        if(ae == null || e > ae) ae = e;
+      }
+      if(st === 'done') done++; else if(st === 'late') late++;
+      if(t.incharge) who[t.incharge] = 1;
+    });
+    var n = ts.length;
+    return { ps: ps, pd: pd, as: as, ae: ae, live: live, done: done, late: late, n: n, who: Object.keys(who),
+      status: done === n ? 'done' : (late ? 'late' : (started ? 'progress' : 'todo')) };
+  }
+  function tlRows(e, r0, r1){
+    var g = e.ag;
+    var planTip = e.name + ' plan: ' + fmt(g.ps) + (g.pd !== g.ps ? ' – ' + fmt(g.pd) : '');
+    var actTip = e.name + ' actual: ' + fmt(g.as) + (g.live ? ' – ongoing' : (g.ae !== g.as ? ' – ' + fmt(g.ae) : ''));
+    var who = g.who.length ? esc(g.who.slice(0, 2).join(', ')) + (g.who.length > 2 ? ' +' + (g.who.length - 2) : '') : '<span style="color:var(--muted)">—</span>';
+    var lead = '';
+    if(e.pid) lead += '<button class="tl-tg" data-act="tl-toggle" data-id="' + esc(e.pid) + '" aria-expanded="' + !!e.open + '" aria-label="' + (e.open ? 'Hide' : 'Show') + ' main processes of ' + esc(e.name) + '">' + (e.open ? '▾' : '▸') + '</button>';
+    var name = '<span class="pname ro">' + esc(e.name || 'Untitled') + '</span>' + (e.sub ? '<span class="pname-sub">' + esc(e.sub) + '</span>' : '') +
+      (e.openId ? '<button class="mini" data-act="open-project" data-id="' + esc(e.openId) + '" style="margin-top:4px">Open</button>' : '');
+    var aeTxt = g.as == null ? '—' : (g.live ? 'ongoing' : fmt(g.ae));
+    var note = g.late ? ' · ' + g.late + ' overdue' : '';
+    return '<tr class="plan tl l' + e.level + '"><td class="proc c-proc" rowspan="2"><div class="tl-name">' + lead + '<div>' + name + '</div></div></td>' +
+      '<td class="st c-st" rowspan="2"><div class="st-in"><span class="pill ' + g.status + '"><i></i>' + STATUS_LABEL[g.status] + '</span><span class="late-note">' + g.done + ' of ' + g.n + ' done' + note + '</span></div></td>' +
+      '<td class="ty plan c-ty">PLAN</td><td class="dt mono c-dt">' + fmt(g.ps) + '</td><td class="dt mono c-dt">' + fmt(g.pd) + '</td>' +
+      '<td class="who c-who" rowspan="2">' + who + '</td>' + barCells(r0, r1, g.ps, g.pd, 'plan', false, planTip) + '</tr>' +
+      '<tr class="last act tl l' + e.level + '"><td class="ty act c-ty">ACTUAL</td><td class="dt mono c-dt' + (g.as == null ? ' dim' : '') + '">' + fmt(g.as) + '</td><td class="dt mono c-dt' + (g.as == null ? ' dim' : '') + '">' + aeTxt + '</td>' +
+      barCells(r0, r1, g.as, g.ae, 'actual', g.live, actTip) + '</tr>';
+  }
+  function timelineHTML(list){
+    var rg = calRange(list), r0 = rg[0], r1 = rg[1], n, d, key, last = null, months = [];
+    for(n = r0; n <= r1; n++){
+      d = toDate(n); key = d.getUTCFullYear() * 12 + d.getUTCMonth();
+      if(key !== last){ months.push({ y: d.getUTCFullYear(), m: d.getUTCMonth(), c: 0 }); last = key; }
+      months[months.length - 1].c++;
+    }
+    var h = '<table class="sched"><thead><tr>' +
+      '<th class="h c-proc" rowspan="2">Project</th><th class="h c-st" rowspan="2">Status</th><th class="h c-ty" rowspan="2"><span class="sr">Plan or actual</span></th>' +
+      '<th class="h c-dt" rowspan="2">Start</th><th class="h c-dt" rowspan="2">Due</th><th class="h c-who" rowspan="2">In charge</th>';
+    months.forEach(function(m){ h += '<th class="mo" colspan="' + m.c + '">' + MONTHS[m.m] + (m.c >= 5 ? ' ' + m.y : '') + '</th>'; });
+    h += '</tr><tr>';
+    for(n = r0; n <= r1; n++){
+      d = toDate(n); var dow = d.getUTCDay();
+      h += '<th class="dd' + (dow === 0 || dow === 6 ? ' we' : '') + (n === TODAY ? ' today' : '') + '" scope="col" data-n="' + n + '"><span class="dn">' + d.getUTCDate() + '</span><span class="dw">' + WD[dow] + '</span></th>';
+    }
+    h += '</tr></thead><tbody>';
+    projects.forEach(function(pr){
+      var ts = list.filter(function(t){ return t.projectId === pr.id; });
+      if(!ts.length) return;
+      var open = !!tlOpen[pr.id];
+      h += tlRows({ level: 0, pid: pr.id, open: open, openId: pr.id, name: pr.name, sub: (pr.client || 'No client') + (pr.po ? ' · PO ' + pr.po : ''), ag: agg(ts) }, r0, r1);
+      if(open){
+        groupsOf(ts).forEach(function(g){
+          h += tlRows({ level: 1, name: g.name, sub: g.tasks.length + (g.tasks.length === 1 ? ' sub process' : ' sub processes'), ag: agg(g.tasks) }, r0, r1);
+        });
+      }
+    });
+    return h + '</tbody></table>';
   }
 
   function barCells(r0, r1, s, e, kind, live, tip){
@@ -1162,6 +1247,15 @@ input[type=date]{min-height:38px;max-width:100%}
       var cw = appEl.querySelector('.sched-wrap');
       if(cw) cw.scrollBy({ left: (act === 'cal-prev' ? -1 : 1) * (+el.dataset.days || 7) * DW, behavior: 'smooth' });
       return;
+    }
+    if(act === 'view-schedule' || act === 'view-timeline'){
+      view = act === 'view-timeline' ? 'timeline' : 'schedule'; lsSet('projectlog.view', view); needScroll = true; render(); return;
+    }
+    if(act === 'tl-toggle'){ tlOpen[el.dataset.id] = !tlOpen[el.dataset.id]; lsSet('projectlog.tl', JSON.stringify(tlOpen)); render(); return; }
+    if(act === 'tl-all'){
+      var anyClosed = projects.some(function(x){ return !tlOpen[x.id]; });
+      projects.forEach(function(x){ tlOpen[x.id] = anyClosed; });
+      lsSet('projectlog.tl', JSON.stringify(tlOpen)); render(); return;
     }
     if(act === 'cal-today'){ var tw = appEl.querySelector('.sched-wrap'); if(tw) scrollToToday(tw, true); return; }
     if(act === 'reset-filters'){ filters = { q: '', client: '', who: '', group: '', status: '', time: '', from: '', to: '' }; needScroll = true; render(); return; }
