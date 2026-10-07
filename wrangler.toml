@@ -10,4 +10,4 @@ binding = "ASSETS"
 binding = "DB"
 database_name = "project-log"
 # Replace with the id printed by: npx wrangler d1 create project-log
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "0b0f1098-7b23-4585-b205-9c3f1d01e1d6"
