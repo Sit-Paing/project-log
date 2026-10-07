@@ -75,7 +75,7 @@ Unlock editing first. Viewers see everything but none of these controls.
 | Add, edit or delete a process | **+ Add** on a main process, or click a process name. |
 | Reorder processes | The up and down arrows under a process name (within its main process). |
 | Rename a main process | **Rename** on the main process header. Use an existing name to merge two. |
-| Log progress | **Start today**, **Finish today**, **Reopen**. |
+| Log progress | The **status dropdown** on each process (Not started, In progress, Done). It fills in the actual dates. Overdue is automatic. |
 
 `samples/` has two images cropped from the BM3 paper sheet. Open the BM3 project, press Add images, and pick them to try the Subject section.
 
