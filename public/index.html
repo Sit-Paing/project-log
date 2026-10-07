@@ -1058,10 +1058,11 @@ input[type=date]{min-height:38px;max-width:100%}
     var existing = modalState && modalState.id;
     var tpl = document.getElementById('f-tpl');
     var useTpl = tpl && tpl.checked;
-    closeModal();
     if(existing){
+      closeModal();
       run(function(){ return api('PATCH', '/api/projects/' + existing, data); }, 'Details saved');
     } else {
+      closeModal();
       data.tasks = useTpl ? templateTasks() : [];
       run(function(){
         return api('POST', '/api/projects', data).then(function(res){ selectedId = res.id; lsSet('projectlog.selected', res.id); needScroll = true; });
