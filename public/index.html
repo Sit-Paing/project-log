@@ -271,6 +271,36 @@ tr.prow td.gfill{background:var(--accent);color:var(--accent-ink);border-top-col
 .pj-sub{display:block;font-size:11px;opacity:.9;overflow-wrap:anywhere}
 .pj .mini{color:var(--accent-ink);border-color:currentColor}
 .pj .mini:hover{background:rgba(255,255,255,.18)}
+
+/* devices: iOS / Android / desktop */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);-webkit-tap-highlight-color:transparent}
+.app{padding-bottom:calc(56px + env(safe-area-inset-bottom,0px))}
+.sched-wrap{max-height:78vh;max-height:78dvh;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+.scrim{overscroll-behavior:contain}
+.st-sel{font-size:12px;padding:3px 4px;border:1px solid var(--line);border-radius:4px;background:var(--surface);color:var(--ink);max-width:100%;width:100%}
+.fld select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);min-width:0}
+input[type=date]{min-height:38px;max-width:100%}
+.fl input[type=search]{-webkit-appearance:none;appearance:none}
+@media (max-width:900px){
+  input,select,textarea{font-size:16px!important}  /* stops iOS zooming into fields */
+  :root{--w-st:144px}
+  .st-sel{padding:3px 2px}
+}
+@media (max-width:640px){
+  .sched-wrap{max-height:72vh;max-height:72dvh}
+  .top{gap:8px}
+  .top .btn{flex:0 0 auto}
+}
+@media (pointer:coarse){
+  .btn{min-height:42px}
+  .mini{min-height:32px;padding:4px 10px}
+  .st-sel{min-height:34px}
+  .fl select,.fl input,.fld input,.fld select,.zoom select,.switch select{min-height:42px}
+  #calSlider{height:42px}
+  .pname{padding:4px 0}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
 </style>
 </head>
 <body>
@@ -766,9 +796,9 @@ tr.prow td.gfill{background:var(--accent);color:var(--accent-ink);border-top-col
           var actTip = 'Actual: ' + fmt(aS) + (live ? ' – ongoing' : (aE !== aS ? ' – ' + fmt(aE) : ''));
           var action = '';
           if(canEdit){
-            if(st === 'done') action = '<button class="mini" data-act="task-reopen" data-id="' + esc(t.id) + '">Reopen</button>';
-            else if(as != null) action = '<button class="mini" data-act="task-finish" data-id="' + esc(t.id) + '">Finish today</button>';
-            else action = '<button class="mini" data-act="task-start" data-id="' + esc(t.id) + '">Start today</button>';
+            var cur = ae != null ? 'done' : (as != null ? 'progress' : 'todo');
+            action = '<select class="st-sel" data-id="' + esc(t.id) + '" aria-label="Set status for ' + esc(t.name) + '">' +
+              [['todo', 'Not started'], ['progress', 'In progress'], ['done', 'Done']].map(function(o){ return '<option value="' + o[0] + '"' + (o[0] === cur ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>';
           }
           var note = '';
           if(st === 'done' && pd != null && ae > pd) note = '<span class="late-note">' + (ae - pd) + 'd late</span>';
@@ -837,7 +867,9 @@ tr.prow td.gfill{background:var(--accent);color:var(--accent-ink);border-top-col
       '<div class="grid2">' + fld('f-group', 'Main process', 'text', v.group, { list: 'groupList', ph: 'e.g. ME Design' }) + fld('f-name', 'Sub process', 'text', v.name, { ph: 'e.g. 3D Design' }) +
       fld('f-who', 'In charge', 'text', v.incharge, { full: true }) +
       '<div class="sec p">Plan</div>' + fld('f-ps', 'Start date', 'date', v.planStart) + fld('f-pd', 'Due date', 'date', v.planDue) +
-      '<div class="sec a">Actual</div>' + fld('f-as', 'Started', 'date', v.actStart) + fld('f-ae', 'Finished', 'date', v.actEnd) +
+      '<div class="sec a">Actual</div>' + '<div class="fld full"><label for="f-status">Status</label><select id="f-status">' +
+        [['todo', 'Not started'], ['progress', 'In progress'], ['done', 'Done']].map(function(o){ var c = v.actEnd ? 'done' : (v.actStart ? 'progress' : 'todo'); return '<option value="' + o[0] + '"' + (o[0] === c ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') +
+        '</select></div>' + fld('f-as', 'Started', 'date', v.actStart) + fld('f-ae', 'Finished', 'date', v.actEnd) +
       '</div><p class="err" id="formErr" role="alert"></p>' +
       '<div class="actions">' + (t ? '<button type="button" class="btn danger" data-act="delete-task">Delete</button>' : '') +
       '<div class="r"><button type="button" class="btn" data-act="close-modal">Cancel</button><button type="submit" class="btn primary">' + (t ? 'Save' : 'Add process') + '</button></div></div></form></div>';
@@ -929,7 +961,7 @@ tr.prow td.gfill{background:var(--accent);color:var(--accent-ink);border-top-col
       '<li><b>Add a new project:</b> New project at the top. Duplicate copies the current project\'s processes and people in charge as a starting point, without actual dates.</li>' +
       '<li><b>Subject images:</b> Add images uploads photos or drawings. Edit on an image changes its caption or order, or deletes it.</li>' +
       '<li><b>Processes:</b> click a process name to edit it or delete it. The arrows move it up or down within its main process. Rename changes a main process name, and + Add adds a sub process to it.</li>' +
-      '<li><b>Logging progress:</b> Start today and Finish today fill in the actual dates. Reopen clears the finish date.</li>' +
+      '<li><b>Logging progress:</b> use the status dropdown on each process (Not started, In progress, Done). It fills in the actual dates for you, and you can still change them by clicking the process name. Overdue is automatic: it shows when the due date has passed and the process is not done.</li>' +
       '</ul></details>';
   }
 
@@ -1081,6 +1113,13 @@ tr.prow td.gfill{background:var(--accent);color:var(--accent-ink);border-top-col
     run(function(){ return api('PATCH', '/api/images/' + id, { caption: cap }); }, 'Caption saved');
   }
 
+  function statusPatch(t, val){
+    var as = t.actStart || '', ae = t.actEnd || '', td = iso(TODAY);
+    if(val === 'todo') return { actStart: '', actEnd: '' };
+    if(val === 'progress') return { actStart: as || td, actEnd: '' };
+    return { actStart: as || td, actEnd: ae || td };
+  }
+  var STATUS_MSG = { todo: 'Set to not started', progress: 'Set to in progress', done: 'Marked done' };
   function quick(id, patch, msg){
     run(function(){ return api('PATCH', '/api/tasks/' + id, patch); }, msg);
   }
@@ -1179,6 +1218,19 @@ tr.prow td.gfill{background:var(--accent);color:var(--accent-ink);border-top-col
       render();
     }
     else if(tid === 'zoomSel') setZoom(+e.target.value);
+    else if(tid === 'f-status'){
+      var sv = e.target.value, fa = document.getElementById('f-as'), fe = document.getElementById('f-ae'), td = iso(TODAY);
+      if(fa && fe){
+        if(sv === 'todo'){ fa.value = ''; fe.value = ''; }
+        else if(sv === 'progress'){ if(!fa.value) fa.value = td; fe.value = ''; }
+        else { if(!fa.value) fa.value = td; if(!fe.value) fe.value = td; }
+      }
+    }
+    else if(e.target.classList && e.target.classList.contains('st-sel')){
+      if(!canEdit) return;
+      var stt = tasks.filter(function(x){ return x.id === e.target.dataset.id; })[0];
+      if(stt) quick(stt.id, statusPatch(stt, e.target.value), STATUS_MSG[e.target.value]);
+    }
     else if(e.target.id === 'imgInput'){ var fl = e.target.files; uploadImages(fl); e.target.value = ''; }
   });
   document.addEventListener('input', function(e){
