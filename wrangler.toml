@@ -1,0 +1,13 @@
+name = "project-log"
+main = "src/worker.js"
+compatibility_date = "2025-09-01"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "project-log"
+# Replace with the id printed by: npx wrangler d1 create project-log
+database_id = "00000000-0000-0000-0000-000000000000"

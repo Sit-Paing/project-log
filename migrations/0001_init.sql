@@ -1,0 +1,22 @@
+CREATE TABLE IF NOT EXISTS projects (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  client TEXT NOT NULL DEFAULT '',
+  po TEXT NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS tasks (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  grp TEXT NOT NULL,
+  name TEXT NOT NULL,
+  incharge TEXT NOT NULL DEFAULT '',
+  plan_start TEXT NOT NULL DEFAULT '',
+  plan_due TEXT NOT NULL DEFAULT '',
+  act_start TEXT NOT NULL DEFAULT '',
+  act_end TEXT NOT NULL DEFAULT '',
+  ord REAL NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project_id, ord);
