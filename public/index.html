@@ -3,7 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Project Log</title>
+<title>Project Log · Automan Intertrade</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="/favicon.png">
+<link rel="apple-touch-icon" href="/favicon.png">
+<meta name="theme-color" content="#1E5C3A">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
@@ -11,6 +15,7 @@
    schedule grid that mirrors the paper summary: process rows in pairs (PLAN green,
    ACTUAL amber) over a day-by-day timeline with a pink "today" column. */
 :root{
+  --w-proc:188px; --w-st:116px; --w-ty:64px;
   color-scheme:light;
   --bg:#F2F4F0; --surface:#FFFFFF; --surface-2:#E9EEE8;
   --ink:#17201B; --muted:#58665D; --line:#CBD5CD; --line-soft:#E1E8E2;
@@ -61,8 +66,9 @@ button,input,select{font:inherit;color:inherit}
 
 /* top bar */
 .top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.brand{display:flex;align-items:center;gap:9px;font-family:var(--font-display);font-weight:700;font-size:22px;letter-spacing:.02em;text-transform:uppercase;margin-right:auto}
-.brand svg{width:22px;height:18px;flex:none}
+.brand{display:flex;align-items:center;gap:12px;margin-right:auto;min-width:0;flex-wrap:wrap}
+.brand .logo{height:34px;width:auto;max-width:100%;display:block;background:#fff;border:1px solid var(--line);border-radius:6px;padding:4px 10px}
+.brand .appname{font-family:var(--font-display);font-weight:700;font-size:22px;letter-spacing:.02em;text-transform:uppercase;white-space:nowrap}
 .switch select{min-width:0;max-width:100%;width:min(420px,calc(100vw - 32px));padding:7px 10px;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:7px 13px;border-radius:6px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:500;white-space:nowrap}
 .btn:hover{background:var(--surface-2)}
@@ -112,20 +118,27 @@ table.sched{border-collapse:separate;border-spacing:0;min-width:max-content;font
 .sched thead tr:first-child th{top:0;height:24px}
 .sched thead tr:nth-child(2) th{top:24px;height:40px}
 .sched thead th.h{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;text-align:left;padding:0 10px;vertical-align:middle;top:0}
-.sched thead th.h.c-proc{left:0;z-index:5}
 .sched thead th.mo{text-align:left;padding:0 6px;font-size:11px;white-space:nowrap;overflow:hidden;color:var(--ink)}
-.sched thead th.dd{width:28px;min-width:28px;max-width:28px;text-align:center;line-height:1.1;font-family:var(--font-mono);font-weight:500}
+.sched thead th.dd{width:var(--dw);min-width:var(--dw);max-width:var(--dw);text-align:center;line-height:1.1;font-family:var(--font-mono);font-weight:500}
 .dd .dn{display:block;font-size:12px;color:var(--ink)}
 .dd .dw{display:block;font-size:9.5px}
 .sched thead th.we{background:var(--line-soft)}
 .sched thead th.today{background:var(--today);color:#fff}
 .sched thead th.today .dn,.sched thead th.today .dw{color:#fff}
-.c-proc{width:210px;min-width:210px;max-width:210px}
+.c-proc{width:var(--w-proc);min-width:var(--w-proc);max-width:var(--w-proc)}
 .c-dt{width:66px;min-width:66px}
 .c-who{width:92px;min-width:92px}
-.c-st{width:112px;min-width:112px}
-.c-ty{width:64px;min-width:64px}
-td.proc{position:sticky;left:0;z-index:2;padding:6px 10px;vertical-align:middle;border-right:1px solid var(--line)}
+.c-st{width:var(--w-st);min-width:var(--w-st);max-width:var(--w-st)}
+.c-ty{width:var(--w-ty);min-width:var(--w-ty);max-width:var(--w-ty)}
+td.proc{padding:6px 10px;vertical-align:middle;border-right:1px solid var(--line)}
+/* frozen columns: Process, Status and PLAN/ACTUAL stay put while the calendar scrolls */
+.sched .c-proc,.sched .c-st,.sched .c-ty{position:sticky;z-index:2}
+.sched .c-proc{left:0}
+.sched .c-st{left:var(--w-proc)}
+.sched .c-ty{left:calc(var(--w-proc) + var(--w-st));border-right:2px solid var(--line)}
+.sched thead th.c-proc,.sched thead th.c-st,.sched thead th.c-ty{z-index:5;top:0}
+.sched td.c-ty.plan,.sched td.c-ty.act{box-shadow:2px 0 0 var(--line)}
+.pill.pname-st{display:none;margin-top:5px}
 .pname{display:block;width:100%;text-align:left;background:none;border:0;padding:0;cursor:pointer;font-weight:600;font-size:13px;line-height:1.3;overflow-wrap:anywhere}
 .pname:hover{text-decoration:underline;text-underline-offset:3px}
 .pname.ro{cursor:default}
@@ -141,7 +154,10 @@ td.st{padding:6px 8px;vertical-align:middle}
 td.ty{text-align:center;font-family:var(--font-mono);font-size:9.5px;font-weight:500;letter-spacing:.1em}
 td.ty.plan{background:var(--plan);color:var(--plan-ink)}
 td.ty.act{background:var(--actual);color:var(--actual-ink)}
-td.d{position:relative;width:28px;min-width:28px;max-width:28px;height:26px}
+td.d{position:relative;width:var(--dw);min-width:var(--dw);max-width:var(--dw);height:26px}
+.sched-wrap{--dw:28px;cursor:default}
+.sched td.d,.sched th.dd,.sched th.mo{cursor:grab;user-select:none;-webkit-user-select:none}
+.sched-wrap.dragging,.sched-wrap.dragging *{cursor:grabbing!important}
 td.d.we{background:var(--weekend)}
 td.d.today{background:var(--today-wash)}
 tr.last td,tr.last th{border-bottom-color:var(--line)}
@@ -216,9 +232,45 @@ tr.grp td.gfill{background:var(--surface-2);font-size:11.5px;color:var(--muted);
 .help ul{margin:10px 0 2px;padding-left:18px;display:flex;flex-direction:column;gap:6px}
 .help b{color:var(--ink);font-weight:600}
 @media (max-width:640px){
-  .c-proc,td.proc{width:150px;min-width:150px;max-width:150px}
+  :root{--w-proc:118px; --w-st:104px; --w-ty:54px}
+  .sched .c-st{position:static}
+  .sched thead th.c-st{position:sticky;left:auto;top:0;z-index:3}
+  .sched .c-ty{left:var(--w-proc)}
+  .pill.pname-st{display:inline-flex}
   .sched-wrap{max-height:72vh}
+  .brand .appname{font-size:18px}
+  .drag-hint{display:none}
 }
+
+/* filters */
+.filters{display:flex;flex-wrap:wrap;gap:10px 12px;align-items:flex-end;padding:12px 14px;background:var(--surface);border:1px solid var(--line);border-radius:8px}
+.fl{display:flex;flex-direction:column;gap:3px;min-width:0}
+.fl label{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;color:var(--muted)}
+.fl select,.fl input{padding:7px 9px;border:1px solid var(--line);border-radius:6px;background:var(--bg);min-width:0;max-width:100%}
+.fl.q{flex:2 1 220px}
+.fl.q input{width:100%}
+.fl.sel{flex:1 1 140px}
+.fl.sel select{width:100%}
+.f-count{margin-left:auto;color:var(--muted);font-size:12px;align-self:center;white-space:nowrap}
+/* calendar controls */
+.calnav{display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;margin-bottom:-6px}
+.cn-btns{display:flex;gap:6px;flex-wrap:wrap}
+.cn-btns .btn{padding:6px 10px}
+.cn-slider{flex:1 1 240px;display:flex;align-items:center;min-width:160px}
+#calSlider{width:100%;height:30px;accent-color:var(--accent);cursor:pointer;margin:0}
+.zoom{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12px}
+.zoom select{padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+.drag-hint{color:var(--muted);font-size:12px}
+.sched-wrap:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+/* project banner rows in the All projects view */
+tr.prow th.gh.pj{background:var(--accent);color:var(--accent-ink);border-top-color:var(--accent);padding:7px 10px}
+tr.prow td.gfill{background:var(--accent);color:var(--accent-ink);border-top-color:var(--accent)}
+.pj-in{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.pj-t{min-width:0}
+.pj-name{display:block;font-family:var(--font-display);font-weight:700;font-size:16px;letter-spacing:.03em;line-height:1.15;overflow-wrap:anywhere}
+.pj-sub{display:block;font-size:11px;opacity:.9;overflow-wrap:anywhere}
+.pj .mini{color:var(--accent-ink);border-color:currentColor}
+.pj .mini:hover{background:rgba(255,255,255,.18)}
 </style>
 </head>
 <body>
@@ -257,6 +309,9 @@ tr.grp td.gfill{background:var(--surface-2);font-size:11.5px;color:var(--muted);
   var selectedId = null, needScroll = false;
   var editKey = '', canEdit = false;
   var modalState = null;
+  var ALL = '__all__';
+  var filters = { q: '', client: '', who: '', group: '', status: '', time: '', from: '', to: '' };
+  var DW = (function(){ var n = parseInt(lsGet('projectlog.dw'), 10); return [20, 28, 40, 56].indexOf(n) >= 0 ? n : 28; })();
 
   var appEl = document.getElementById('app');
   var modalEl = document.getElementById('modal');
@@ -292,14 +347,13 @@ tr.grp td.gfill{background:var(--surface-2);font-size:11.5px;color:var(--muted);
       if(!force && projectsLoaded && sig === lastSig) return;
       lastSig = sig;
       projects = d.projects || []; allTasks = d.tasks || []; allImages = d.images || []; projectsLoaded = true;
-      var found = projects.some(function(p){ return p.id === selectedId; });
+      var found = (selectedId === ALL && projects.length > 1) || projects.some(function(p){ return p.id === selectedId; });
       if(!found){
         var stored = lsGet('projectlog.selected');
         var pick = projects.filter(function(p){ return p.id === stored; })[0] || projects[0];
-        selectedId = pick ? pick.id : null; needScroll = true;
+        selectedId = (stored === ALL && projects.length > 1) ? ALL : (pick ? pick.id : null); needScroll = true;
       }
-      tasks = allTasks.filter(function(t){ return t.projectId === selectedId; });
-      images = allImages.filter(function(t){ return t.projectId === selectedId; });
+      setScope();
       render();
     }).catch(function(){
       if(!projectsLoaded){ loadFailed = true; render(); }
@@ -309,8 +363,11 @@ tr.grp td.gfill{background:var(--surface-2);font-size:11.5px;color:var(--muted);
   function selectProject(id){
     selectedId = id; needScroll = true;
     if(id) lsSet('projectlog.selected', id);
-    tasks = allTasks.filter(function(t){ return t.projectId === id; });
-    images = allImages.filter(function(t){ return t.projectId === id; });
+    if(id !== ALL && filters.client){
+      var pr = projects.filter(function(x){ return x.id === id; })[0];
+      if(pr && (pr.client || '') !== filters.client) filters.client = '';
+    }
+    setScope();
     render();
   }
 
@@ -325,8 +382,8 @@ tr.grp td.gfill{background:var(--surface-2);font-size:11.5px;color:var(--muted);
     arr.forEach(function(g){ g.tasks.sort(function(a,b){ return a.order - b.order; }); });
     return arr;
   }
-  function orderFor(group, exceptId){
-    var list = tasks.filter(function(t){ return t.id !== exceptId; });
+  function orderFor(group, exceptId, pid){
+    var list = projTasks(pid == null ? selectedId : pid).filter(function(t){ return t.id !== exceptId; });
     var gs = groupsOf(list);
     for(var i = 0; i < gs.length; i++){ if(gs[i].name === group) return gs[i].max + 1; }
     var mx = 0; list.forEach(function(t){ mx = Math.max(mx, t.order); });
@@ -366,13 +423,169 @@ tr.grp td.gfill{background:var(--surface-2);font-size:11.5px;color:var(--muted);
   /* ---------- rendering ---------- */
   function currentProject(){ for(var i = 0; i < projects.length; i++) if(projects[i].id === selectedId) return projects[i]; return null; }
 
-  function logoSvg(){
-    return '<svg viewBox="0 0 22 18" aria-hidden="true"><rect x="0" y="1" width="10" height="4" rx="1.5" fill="var(--plan)"/><rect x="6" y="7" width="12" height="4" rx="1.5" fill="var(--actual)"/><rect x="12" y="13" width="10" height="4" rx="1.5" fill="var(--plan)"/></svg>';
+  function setScope(){
+    if(selectedId === ALL){ tasks = allTasks; images = []; }
+    else {
+      tasks = allTasks.filter(function(t){ return t.projectId === selectedId; });
+      images = allImages.filter(function(t){ return t.projectId === selectedId; });
+    }
+  }
+  function projTasks(pid){ return allTasks.filter(function(t){ return t.projectId === pid; }); }
+
+  function logoHTML(){
+    return '<img class="logo" src="/logo.png" alt="Automan Intertrade Co., Ltd."><span class="appname">Project Log</span>';
   }
 
+  /* ---------- filters ---------- */
+  var TIME_OPTS = [['', 'Any time'], ['week', 'This week'], ['2weeks', 'Next 2 weeks'], ['month', 'This month'], ['nextmonth', 'Next month'], ['last30', 'Last 30 days'], ['custom', 'Custom range…']];
+  var STATUS_OPTS = [['', 'Any status'], ['open', 'Not done'], ['progress', 'In progress'], ['late', 'Overdue'], ['todo', 'Not started'], ['done', 'Done']];
+  var ZOOMS = [[20, 'Compact'], [28, 'Normal'], [40, 'Wide'], [56, 'Extra wide']];
+
+  function uniq(arr){
+    var m = {}, o = [];
+    arr.forEach(function(x){ if(x && !m[x]){ m[x] = 1; o.push(x); } });
+    return o.sort(function(a, b){ return a.localeCompare(b); });
+  }
+  function taskSpan(t){
+    var as = parse(t.actStart), ae = parse(t.actEnd);
+    var a = [parse(t.planStart), parse(t.planDue), as, ae].filter(function(x){ return x != null; });
+    if(as != null && ae == null) a.push(Math.max(as, TODAY));
+    if(!a.length) return null;
+    return [Math.min.apply(null, a), Math.max.apply(null, a)];
+  }
+  function windowOf(){
+    var f = filters.time;
+    if(!f) return null;
+    var wd = (toDate(TODAY).getUTCDay() + 6) % 7, mon = TODAY - wd;
+    var d = toDate(TODAY), y = d.getUTCFullYear(), m = d.getUTCMonth();
+    function u(yy, mm, dd){ return Math.round(Date.UTC(yy, mm, dd) / MS); }
+    if(f === 'week') return [mon, mon + 6];
+    if(f === '2weeks') return [TODAY, TODAY + 13];
+    if(f === 'last30') return [TODAY - 30, TODAY];
+    if(f === 'month') return [u(y, m, 1), u(y, m + 1, 0)];
+    if(f === 'nextmonth') return [u(y, m + 1, 1), u(y, m + 2, 0)];
+    if(f === 'custom'){
+      var a = parse(filters.from), b = parse(filters.to);
+      if(a == null && b == null) return null;
+      if(a != null && b != null && b < a){ var x = a; a = b; b = x; }
+      return [a, b];
+    }
+    return null;
+  }
+  function filtersActive(){
+    return !!(filters.q || filters.client || filters.who || filters.group || filters.status || filters.time);
+  }
+  function filterTasks(list){
+    var q = filters.q.trim().toLowerCase(), w = windowOf(), pm = {};
+    projects.forEach(function(p){ pm[p.id] = p; });
+    return list.filter(function(t){
+      var p = pm[t.projectId] || {};
+      if(filters.client && (p.client || '') !== filters.client) return false;
+      if(filters.who && (t.incharge || '') !== filters.who) return false;
+      if(filters.group && t.group !== filters.group) return false;
+      if(filters.status){
+        var s = statusOf(t);
+        if(filters.status === 'open'){ if(s === 'done') return false; }
+        else if(s !== filters.status) return false;
+      }
+      if(q){
+        var hay = [p.name, p.client, p.po, t.group, t.name, t.incharge].join(' ').toLowerCase();
+        if(hay.indexOf(q) < 0) return false;
+      }
+      if(w){
+        var sp = taskSpan(t);
+        if(!sp) return false;
+        if(w[0] != null && sp[1] < w[0]) return false;
+        if(w[1] != null && sp[0] > w[1]) return false;
+      }
+      return true;
+    });
+  }
+  function calRange(list){
+    var base = rangeOf(list), w = windowOf();
+    if(!w) return base;
+    var lo = w[0] != null ? w[0] : base[0], hi = w[1] != null ? w[1] : base[1];
+    if(hi < lo){ var x = lo; lo = hi; hi = x; }
+    if(hi - lo < 13) hi = lo + 13;
+    if(hi - lo > 400) hi = lo + 400;
+    return [lo, hi];
+  }
+  function optHTML(list, cur, allLabel){
+    return '<option value="">' + allLabel + '</option>' + list.map(function(x){
+      return '<option value="' + esc(x) + '"' + (x === cur ? ' selected' : '') + '>' + esc(x) + '</option>';
+    }).join('');
+  }
+  function pairsHTML(pairs, cur){
+    return pairs.map(function(o){ return '<option value="' + o[0] + '"' + (String(o[0]) === String(cur) ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('');
+  }
+  function selHTML(id, label, inner){
+    return '<div class="fl sel"><label for="' + id + '">' + label + '</label><select id="' + id + '">' + inner + '</select></div>';
+  }
+  function filterBarHTML(lists, shown, total){
+    var h = '<section class="filters" aria-label="Filters">' +
+      '<div class="fl q"><label for="flt-q">Search</label><input id="flt-q" type="search" placeholder="Project, client, PO, process, person" value="' + esc(filters.q) + '" autocomplete="off"></div>' +
+      selHTML('flt-client', 'Client', optHTML(lists.clients, filters.client, 'All clients')) +
+      selHTML('flt-who', 'In charge', optHTML(lists.whos, filters.who, 'Everyone')) +
+      selHTML('flt-group', 'Main process', optHTML(lists.groups, filters.group, 'All processes')) +
+      selHTML('flt-status', 'Status', pairsHTML(STATUS_OPTS, filters.status)) +
+      selHTML('flt-time', 'Time', pairsHTML(TIME_OPTS, filters.time));
+    if(filters.time === 'custom'){
+      h += '<div class="fl"><label for="flt-from">From</label><input id="flt-from" type="date" value="' + esc(filters.from) + '"></div>' +
+        '<div class="fl"><label for="flt-to">To</label><input id="flt-to" type="date" value="' + esc(filters.to) + '"></div>';
+    }
+    h += '<div class="f-count mono">' + shown + ' of ' + total + ' processes</div>';
+    if(filtersActive()) h += '<button class="btn" data-act="reset-filters">Reset filters</button>';
+    return h + '</section>';
+  }
+  function calNavHTML(){
+    return '<div class="calnav"><div class="cn-btns">' +
+      '<button class="btn" data-act="cal-prev" data-days="30" title="Back one month">« Month</button>' +
+      '<button class="btn" data-act="cal-prev" data-days="7" title="Back one week">‹ Week</button>' +
+      '<button class="btn primary" data-act="cal-today">Today</button>' +
+      '<button class="btn" data-act="cal-next" data-days="7" title="Forward one week">Week ›</button>' +
+      '<button class="btn" data-act="cal-next" data-days="30" title="Forward one month">Month »</button></div>' +
+      '<div class="cn-slider"><input id="calSlider" type="range" min="0" max="0" value="0" step="1" aria-label="Slide the calendar left and right"></div>' +
+      '<label class="zoom">Zoom<select id="zoomSel">' + pairsHTML(ZOOMS, DW) + '</select></label>' +
+      '<span class="drag-hint">Drag the calendar to move it</span></div>';
+  }
+
+  /* ---------- calendar movement ---------- */
+  function frozenW(wrap){
+    var t = wrap.querySelector('thead th.c-ty');
+    if(!t) return 0;
+    return (parseFloat(getComputedStyle(t).left) || 0) + t.offsetWidth;
+  }
+  function scrollToToday(wrap, smooth){
+    var th = wrap.querySelector('th.dd.today'), left;
+    if(th) left = th.offsetLeft - frozenW(wrap) - Math.min(160, wrap.clientWidth * 0.2);
+    else {
+      var first = wrap.querySelector('th.dd'), tn = first ? first.getAttribute('data-n') : null;
+      left = (tn != null && TODAY > +tn) ? wrap.scrollWidth : 0;
+    }
+    wrap.scrollTo({ left: Math.max(0, left), behavior: smooth ? 'smooth' : 'auto' });
+  }
+  function syncSlider(){
+    var w = appEl.querySelector('.sched-wrap'), s = document.getElementById('calSlider');
+    if(!w || !s) return;
+    s.max = Math.max(0, w.scrollWidth - w.clientWidth);
+    s.value = Math.round(w.scrollLeft);
+  }
+  function setZoom(n){
+    var w = appEl.querySelector('.sched-wrap');
+    DW = n; lsSet('projectlog.dw', String(n));
+    if(!w) return;
+    var ratio = (w.scrollLeft + w.clientWidth / 2) / (w.scrollWidth || 1);
+    w.style.setProperty('--dw', n + 'px');
+    w.scrollLeft = ratio * w.scrollWidth - w.clientWidth / 2;
+    syncSlider();
+  }
+
+  /* ---------- rendering ---------- */
   function render(){
     var wrap = appEl.querySelector('.sched-wrap');
     var sl = wrap ? wrap.scrollLeft : 0, st = wrap ? wrap.scrollTop : 0;
+    var fa = document.activeElement, fid = null, fs = 0, fe = 0;
+    if(fa && fa.id && /^flt-/.test(fa.id) && appEl.contains(fa)){ fid = fa.id; try { fs = fa.selectionStart; fe = fa.selectionEnd; } catch(x){} }
     TODAY = todayN();
 
     if(loadFailed){
@@ -381,12 +594,16 @@ tr.grp td.gfill{background:var(--surface-2);font-size:11.5px;color:var(--muted);
     }
     if(!projectsLoaded){ appEl.innerHTML = '<div class="empty big"><p>Loading projects…</p></div>'; return; }
 
-    var topBar = '<header class="top"><div class="brand">' + logoSvg() + 'Project Log</div>';
+    var isAll = selectedId === ALL;
+    var topBar = '<header class="top"><div class="brand">' + logoHTML() + '</div>';
     if(projects.length){
-      topBar += '<label class="switch"><span class="sr">Project</span><select id="projectSelect">' +
-        projects.map(function(p){
-          return '<option value="' + esc(p.id) + '"' + (p.id === selectedId ? ' selected' : '') + '>' + esc(p.name || 'Untitled') + (p.po ? ' · PO ' + esc(p.po) : '') + '</option>';
-        }).join('') + '</select></label>';
+      var opts = '';
+      if(projects.length > 1) opts += '<option value="' + ALL + '"' + (isAll ? ' selected' : '') + '>All projects (' + projects.length + ')</option>';
+      projects.forEach(function(p){
+        if(filters.client && (p.client || '') !== filters.client && p.id !== selectedId) return;
+        opts += '<option value="' + esc(p.id) + '"' + (p.id === selectedId ? ' selected' : '') + '>' + esc(p.name || 'Untitled') + (p.po ? ' · PO ' + esc(p.po) : '') + '</option>';
+      });
+      topBar += '<label class="switch"><span class="sr">Project</span><select id="projectSelect">' + opts + '</select></label>';
     }
     if(canEdit){
       topBar += '<button class="btn primary" data-act="new-project">New project</button>' +
@@ -396,8 +613,8 @@ tr.grp td.gfill{background:var(--surface-2);font-size:11.5px;color:var(--muted);
     }
     topBar += '</header>';
 
-    var p = currentProject();
-    if(!p){
+    var p = isAll ? null : currentProject();
+    if(!isAll && !p){
       appEl.innerHTML = topBar + '<div class="empty big"><h2>No projects yet</h2>' +
         (canEdit
           ? '<p>Create a project with its client and PO number, then log each process with a start date, due date and person in charge.</p><div class="row"><button class="btn primary" data-act="new-project">Create the first project</button></div>'
@@ -405,20 +622,38 @@ tr.grp td.gfill{background:var(--surface-2);font-size:11.5px;color:var(--muted);
       return;
     }
 
+    /* filters (drop values that no longer exist in this view) */
+    var scope = tasks;
+    var lists = { clients: uniq(projects.map(function(x){ return x.client; })), whos: uniq(scope.map(function(t){ return t.incharge; })), groups: uniq(scope.map(function(t){ return t.group; })) };
+    if(filters.client && lists.clients.indexOf(filters.client) < 0) filters.client = '';
+    if(filters.who && lists.whos.indexOf(filters.who) < 0) filters.who = '';
+    if(filters.group && lists.groups.indexOf(filters.group) < 0) filters.group = '';
+    var list = filterTasks(scope);
+
     var dates = [];
-    tasks.forEach(function(t){ var a = parse(t.planStart), b = parse(t.planDue); if(a != null) dates.push(a); if(b != null) dates.push(b); });
+    (isAll ? list : scope).forEach(function(t){ var a = parse(t.planStart), b = parse(t.planDue); if(a != null) dates.push(a); if(b != null) dates.push(b); });
     var sched = dates.length ? fmtY(Math.min.apply(null, dates)) + ' – ' + fmtY(Math.max.apply(null, dates)) : 'Not scheduled yet';
 
     var counts = { done: 0, progress: 0, late: 0, todo: 0 };
-    tasks.forEach(function(t){ counts[statusOf(t)]++; });
-    var total = tasks.length, pct = total ? Math.round(counts.done / total * 100) : 0;
+    list.forEach(function(t){ counts[statusOf(t)]++; });
+    var total = list.length, pct = total ? Math.round(counts.done / total * 100) : 0;
 
-    var html = topBar +
-      '<section class="ph"><div class="ph-main"><h1>' + esc(p.name || 'Untitled project') + '</h1>' +
-      '<dl class="meta"><div><dt>Client</dt><dd>' + (esc(p.client) || '—') + '</dd></div>' +
-      '<div><dt>PO No.</dt><dd class="mono">' + (esc(p.po) || '—') + '</dd></div>' +
-      '<div><dt>Planned</dt><dd class="mono">' + esc(sched) + '</dd></div></dl></div>' +
-      (canEdit ? '<div class="bar-actions"><button class="btn" data-act="edit-project">Edit project</button><button class="btn" data-act="duplicate-project">Duplicate</button></div>' : '') + '</section>';
+    var html = topBar;
+    if(isAll){
+      var pids = {}, cls = {};
+      list.forEach(function(t){ pids[t.projectId] = 1; });
+      projects.forEach(function(x){ if(pids[x.id] && x.client) cls[x.client] = 1; });
+      html += '<section class="ph"><div class="ph-main"><h1>All projects</h1>' +
+        '<dl class="meta"><div><dt>Projects</dt><dd class="mono">' + Object.keys(pids).length + '</dd></div>' +
+        '<div><dt>Clients</dt><dd class="mono">' + Object.keys(cls).length + '</dd></div>' +
+        '<div><dt>Planned</dt><dd class="mono">' + esc(sched) + '</dd></div></dl></div></section>';
+    } else {
+      html += '<section class="ph"><div class="ph-main"><h1>' + esc(p.name || 'Untitled project') + '</h1>' +
+        '<dl class="meta"><div><dt>Client</dt><dd>' + (esc(p.client) || '—') + '</dd></div>' +
+        '<div><dt>PO No.</dt><dd class="mono">' + (esc(p.po) || '—') + '</dd></div>' +
+        '<div><dt>Planned</dt><dd class="mono">' + esc(sched) + '</dd></div></dl></div>' +
+        (canEdit ? '<div class="bar-actions"><button class="btn" data-act="edit-project">Edit project</button><button class="btn" data-act="duplicate-project">Duplicate</button></div>' : '') + '</section>';
+    }
 
     html += '<section class="stats" aria-label="Progress"><div class="prog"><span class="prog-label mono">' + counts.done + ' of ' + total + ' done</span>' +
       '<div class="prog-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><div class="prog-fill" style="width:' + pct + '%"></div></div></div>' +
@@ -427,29 +662,35 @@ tr.grp td.gfill{background:var(--surface-2);font-size:11.5px;color:var(--muted);
       '<span class="pill late"><i></i>' + counts.late + ' overdue</span>' +
       '<span class="pill todo"><i></i>' + counts.todo + ' not started</span></div></section>';
 
-    html += subjectHTML(p);
+    if(!isAll) html += subjectHTML(p);
+
+    html += filterBarHTML(lists, list.length, scope.length);
 
     html += '<div class="bar-row"><div class="legend"><span><i class="sw plan"></i>Plan</span><span><i class="sw actual"></i>Actual</span><span><i class="sw today"></i>Today, ' + fmtY(TODAY) + '</span></div>' +
-      '<div class="bar-actions">' + (canEdit ? '<button class="btn" data-act="add-task" data-group="">Add process</button>' : '') + '</div></div>';
+      '<div class="bar-actions">' + (canEdit && !isAll ? '<button class="btn" data-act="add-task" data-group="">Add process</button>' : '') + '</div></div>';
 
-    if(!tasks.length){
+    if(!scope.length){
       html += '<div class="sched-wrap"><div class="empty"><h2>No processes logged</h2>' +
-        (canEdit
+        (canEdit && !isAll
           ? '<p>Start from the standard set (ME design, EE design, parts order, automation) or add your own processes one by one.</p><div class="row"><button class="btn primary" data-act="load-template">Load standard processes</button><button class="btn" data-act="add-task" data-group="">Add process</button></div>'
-          : '<p>No processes have been added to this project yet.</p>') + '</div></div>';
+          : '<p>No processes have been added yet.</p>') + '</div></div>';
+    } else if(!list.length){
+      html += '<div class="sched-wrap"><div class="empty"><h2>Nothing matches these filters</h2><p>Try a wider time range or clear a filter.</p><div class="row"><button class="btn primary" data-act="reset-filters">Reset filters</button></div></div></div>';
     } else {
-      html += '<div class="sched-wrap">' + tableHTML() + '</div>';
+      html += calNavHTML() + '<div class="sched-wrap" tabindex="0" aria-label="Schedule calendar" style="--dw:' + DW + 'px">' + tableHTML(list, isAll) + '</div>';
     }
     if(canEdit) html += helpHTML();
     appEl.innerHTML = html;
 
     var w2 = appEl.querySelector('.sched-wrap');
     if(w2 && w2.querySelector('table')){
-      if(needScroll){
-        var th = w2.querySelector('th.today');
-        if(th) w2.scrollLeft = Math.max(0, th.offsetLeft - Math.min(420, w2.clientWidth * 0.55));
-        needScroll = false;
-      } else { w2.scrollLeft = sl; w2.scrollTop = st; }
+      if(needScroll){ scrollToToday(w2, false); needScroll = false; }
+      else { w2.scrollLeft = sl; w2.scrollTop = st; }
+      syncSlider();
+    }
+    if(fid){
+      var f2 = document.getElementById(fid);
+      if(f2){ f2.focus(); try { f2.setSelectionRange(fs, fe); } catch(x){} }
     }
   }
 
@@ -467,8 +708,9 @@ tr.grp td.gfill{background:var(--surface-2);font-size:11.5px;color:var(--muted);
     return out;
   }
 
-  function tableHTML(){
-    var gs = groupsOf(tasks), rg = rangeOf(tasks), r0 = rg[0], r1 = rg[1], N = r1 - r0 + 1;
+  function tableHTML(list, isAll){
+    var rg = calRange(list), r0 = rg[0], r1 = rg[1], N = r1 - r0 + 1;
+    var filtering = filtersActive();
     var months = [], n, d, key, last = null;
     for(n = r0; n <= r1; n++){
       d = toDate(n); key = d.getUTCFullYear() * 12 + d.getUTCMonth();
@@ -476,62 +718,83 @@ tr.grp td.gfill{background:var(--surface-2);font-size:11.5px;color:var(--muted);
       months[months.length - 1].c++;
     }
     var h = '<table class="sched"><thead><tr>' +
-      '<th class="h c-proc" rowspan="2">Process</th><th class="h c-dt" rowspan="2">Start</th><th class="h c-dt" rowspan="2">Due</th>' +
-      '<th class="h c-who" rowspan="2">In charge</th><th class="h c-st" rowspan="2">Status</th><th class="h c-ty" rowspan="2"><span class="sr">Plan or actual</span></th>';
+      '<th class="h c-proc" rowspan="2">Process</th><th class="h c-st" rowspan="2">Status</th><th class="h c-ty" rowspan="2"><span class="sr">Plan or actual</span></th>' +
+      '<th class="h c-dt" rowspan="2">Start</th><th class="h c-dt" rowspan="2">Due</th><th class="h c-who" rowspan="2">In charge</th>';
     months.forEach(function(m){
       h += '<th class="mo" colspan="' + m.c + '">' + MONTHS[m.m] + (m.c >= 5 ? ' ' + m.y : '') + '</th>';
     });
     h += '</tr><tr>';
     for(n = r0; n <= r1; n++){
       d = toDate(n); var dow = d.getUTCDay();
-      h += '<th class="dd' + (dow === 0 || dow === 6 ? ' we' : '') + (n === TODAY ? ' today' : '') + '" scope="col"><span class="dn">' + d.getUTCDate() + '</span><span class="dw">' + WD[dow] + '</span></th>';
+      h += '<th class="dd' + (dow === 0 || dow === 6 ? ' we' : '') + (n === TODAY ? ' today' : '') + '" scope="col" data-n="' + n + '"><span class="dn">' + d.getUTCDate() + '</span><span class="dw">' + WD[dow] + '</span></th>';
     }
     h += '</tr></thead><tbody>';
 
-    gs.forEach(function(g){
-      var done = g.tasks.filter(function(t){ return statusOf(t) === 'done'; }).length;
-      h += '<tr class="grp"><th class="gh" scope="rowgroup"><div class="gh-in"><span class="gname">' + esc(g.name) + '</span>' +
-        (canEdit ? '<span class="gh-btns"><button class="mini" data-act="rename-group" data-group="' + esc(g.name) + '" aria-label="Rename ' + esc(g.name) + '">Rename</button><button class="mini" data-act="add-task" data-group="' + esc(g.name) + '" aria-label="Add process to ' + esc(g.name) + '">+ Add</button></span>' : '') + '</div></th>' +
-        '<td class="gfill" colspan="' + (5 + N) + '">' + done + ' of ' + g.tasks.length + ' done</td></tr>';
+    var blocks = [];
+    if(isAll){
+      projects.forEach(function(pr){
+        var ts = list.filter(function(t){ return t.projectId === pr.id; });
+        if(ts.length) blocks.push({ p: pr, tasks: ts });
+      });
+    } else blocks.push({ p: null, tasks: list });
 
-      g.tasks.forEach(function(t, idx){
-        var ps = parse(t.planStart), pd = parse(t.planDue), as = parse(t.actStart), ae = parse(t.actEnd);
-        var st = statusOf(t);
-        var pS = ps != null ? ps : pd, pE = pd != null ? pd : ps;
-        var aS = as, aE = null, live = false;
-        if(as != null){
-          if(ae != null) aE = ae; else { aE = Math.max(as, TODAY); live = true; }
-        }
-        var planTip = 'Plan: ' + fmt(pS) + (pE !== pS ? ' – ' + fmt(pE) : '');
-        var actTip = 'Actual: ' + fmt(aS) + (live ? ' – ongoing' : (aE !== aS ? ' – ' + fmt(aE) : ''));
-        var action = '';
-        if(canEdit){
-          if(st === 'done') action = '<button class="mini" data-act="task-reopen" data-id="' + esc(t.id) + '">Reopen</button>';
-          else if(as != null) action = '<button class="mini" data-act="task-finish" data-id="' + esc(t.id) + '">Finish today</button>';
-          else action = '<button class="mini" data-act="task-start" data-id="' + esc(t.id) + '">Start today</button>';
-        }
-        var note = '';
-        if(st === 'done' && pd != null && ae > pd) note = '<span class="late-note">' + (ae - pd) + 'd late</span>';
-        else if(st === 'late' && pd != null) note = '<span class="late-note">due ' + fmt(pd) + '</span>';
+    blocks.forEach(function(b){
+      if(b.p){
+        var bd = b.tasks.filter(function(t){ return statusOf(t) === 'done'; }).length;
+        h += '<tr class="grp prow"><th class="gh pj" colspan="3" scope="rowgroup"><div class="pj-in"><div class="pj-t"><span class="pj-name">' + esc(b.p.name || 'Untitled') + '</span>' +
+          '<span class="pj-sub">' + esc(b.p.client || 'No client') + (b.p.po ? ' · PO ' + esc(b.p.po) : '') + '</span></div>' +
+          '<button class="mini" data-act="open-project" data-id="' + esc(b.p.id) + '">Open</button></div></th>' +
+          '<td class="gfill" colspan="' + (3 + N) + '">' + bd + ' of ' + b.tasks.length + ' done</td></tr>';
+      }
+      var pid = b.p ? b.p.id : selectedId;
+      groupsOf(b.tasks).forEach(function(g){
+        var done = g.tasks.filter(function(t){ return statusOf(t) === 'done'; }).length;
+        h += '<tr class="grp"><th class="gh" colspan="3" scope="rowgroup"><div class="gh-in"><span class="gname">' + esc(g.name) + '</span>' +
+          (canEdit ? '<span class="gh-btns"><button class="mini" data-act="rename-group" data-pid="' + esc(pid) + '" data-group="' + esc(g.name) + '" aria-label="Rename ' + esc(g.name) + '">Rename</button>' +
+            (isAll ? '' : '<button class="mini" data-act="add-task" data-group="' + esc(g.name) + '" aria-label="Add process to ' + esc(g.name) + '">+ Add</button>') + '</span>' : '') + '</div></th>' +
+          '<td class="gfill" colspan="' + (3 + N) + '">' + done + ' of ' + g.tasks.length + ' done</td></tr>';
 
-        var actEndTxt = ae != null ? fmt(ae) : (as != null ? 'ongoing' : '—');
-        var mv = '';
-        if(canEdit && g.tasks.length > 1){
-          mv = '<div class="mv">' + (idx > 0 ? '<button class="mini" data-act="move-up" data-id="' + esc(t.id) + '" aria-label="Move ' + esc(t.name) + ' up">↑</button>' : '') +
-            (idx < g.tasks.length - 1 ? '<button class="mini" data-act="move-down" data-id="' + esc(t.id) + '" aria-label="Move ' + esc(t.name) + ' down">↓</button>' : '') + '</div>';
-        }
-        var nameEl = canEdit
-          ? '<button class="pname" data-act="edit-task" data-id="' + esc(t.id) + '" title="Edit ' + esc(t.name) + '">' + esc(t.name || 'Untitled') + '</button>'
-          : '<span class="pname ro">' + esc(t.name || 'Untitled') + '</span>';
-        h += '<tr class="plan">' +
-          '<td class="proc c-proc" rowspan="2">' + nameEl + mv + '</td>' +
-          '<td class="dt mono c-dt">' + fmt(ps) + '</td><td class="dt mono c-dt">' + fmt(pd) + '</td>' +
-          '<td class="who c-who" rowspan="2">' + (esc(t.incharge) || '<span style="color:var(--muted)">—</span>') + '</td>' +
-          '<td class="st c-st" rowspan="2"><div class="st-in"><span class="pill ' + st + '"><i></i>' + STATUS_LABEL[st] + '</span>' + note + action + '</div></td>' +
-          '<td class="ty plan c-ty">PLAN</td>' + barCells(r0, r1, pS, pE, 'plan', false, planTip) + '</tr>' +
-          '<tr class="last act">' +
-          '<td class="dt mono c-dt' + (as == null ? ' dim' : '') + '">' + fmt(as) + '</td><td class="dt mono c-dt' + (ae == null ? ' dim' : '') + '">' + actEndTxt + '</td>' +
-          '<td class="ty act c-ty">ACTUAL</td>' + barCells(r0, r1, aS, aE, 'actual', live, actTip) + '</tr>';
+        g.tasks.forEach(function(t, idx){
+          var ps = parse(t.planStart), pd = parse(t.planDue), as = parse(t.actStart), ae = parse(t.actEnd);
+          var st = statusOf(t);
+          var pS = ps != null ? ps : pd, pE = pd != null ? pd : ps;
+          var aS = as, aE = null, live = false;
+          if(as != null){
+            if(ae != null) aE = ae; else { aE = Math.max(as, TODAY); live = true; }
+          }
+          var planTip = 'Plan: ' + fmt(pS) + (pE !== pS ? ' – ' + fmt(pE) : '');
+          var actTip = 'Actual: ' + fmt(aS) + (live ? ' – ongoing' : (aE !== aS ? ' – ' + fmt(aE) : ''));
+          var action = '';
+          if(canEdit){
+            if(st === 'done') action = '<button class="mini" data-act="task-reopen" data-id="' + esc(t.id) + '">Reopen</button>';
+            else if(as != null) action = '<button class="mini" data-act="task-finish" data-id="' + esc(t.id) + '">Finish today</button>';
+            else action = '<button class="mini" data-act="task-start" data-id="' + esc(t.id) + '">Start today</button>';
+          }
+          var note = '';
+          if(st === 'done' && pd != null && ae > pd) note = '<span class="late-note">' + (ae - pd) + 'd late</span>';
+          else if(st === 'late' && pd != null) note = '<span class="late-note">due ' + fmt(pd) + '</span>';
+
+          var actEndTxt = ae != null ? fmt(ae) : (as != null ? 'ongoing' : '—');
+          var mv = '';
+          if(canEdit && !isAll && !filtering && g.tasks.length > 1){
+            mv = '<div class="mv">' + (idx > 0 ? '<button class="mini" data-act="move-up" data-id="' + esc(t.id) + '" aria-label="Move ' + esc(t.name) + ' up">↑</button>' : '') +
+              (idx < g.tasks.length - 1 ? '<button class="mini" data-act="move-down" data-id="' + esc(t.id) + '" aria-label="Move ' + esc(t.name) + ' down">↓</button>' : '') + '</div>';
+          }
+          var nameEl = canEdit
+            ? '<button class="pname" data-act="edit-task" data-id="' + esc(t.id) + '" title="Edit ' + esc(t.name) + '">' + esc(t.name || 'Untitled') + '</button>'
+            : '<span class="pname ro">' + esc(t.name || 'Untitled') + '</span>';
+          h += '<tr class="plan">' +
+            '<td class="proc c-proc" rowspan="2">' + nameEl + '<span class="pill pname-st ' + st + '"><i></i>' + STATUS_LABEL[st] + '</span>' + mv + '</td>' +
+            '<td class="st c-st" rowspan="2"><div class="st-in"><span class="pill ' + st + '"><i></i>' + STATUS_LABEL[st] + '</span>' + note + action + '</div></td>' +
+            '<td class="ty plan c-ty">PLAN</td>' +
+            '<td class="dt mono c-dt">' + fmt(ps) + '</td><td class="dt mono c-dt">' + fmt(pd) + '</td>' +
+            '<td class="who c-who" rowspan="2">' + (esc(t.incharge) || '<span style="color:var(--muted)">—</span>') + '</td>' +
+            barCells(r0, r1, pS, pE, 'plan', false, planTip) + '</tr>' +
+            '<tr class="last act">' +
+            '<td class="ty act c-ty">ACTUAL</td>' +
+            '<td class="dt mono c-dt' + (as == null ? ' dim' : '') + '">' + fmt(as) + '</td><td class="dt mono c-dt' + (ae == null ? ' dim' : '') + '">' + actEndTxt + '</td>' +
+            barCells(r0, r1, aS, aE, 'actual', live, actTip) + '</tr>';
+        });
       });
     });
     return h + '</tbody></table>';
@@ -565,8 +828,9 @@ tr.grp td.gfill{background:var(--surface-2);font-size:11.5px;color:var(--muted);
     var f = document.getElementById('f-pname'); if(f) f.focus();
   }
   function openTaskModal(t, group){
-    modalState = { type: 'task', id: t ? t.id : null };
-    var groups = groupsOf(tasks).map(function(g){ return g.name; });
+    var tpid = t ? t.projectId : selectedId;
+    modalState = { type: 'task', id: t ? t.id : null, pid: tpid };
+    var groups = groupsOf(projTasks(tpid)).map(function(g){ return g.name; });
     var v = t || { group: group || '', name: '', incharge: '', planStart: '', planDue: '', actStart: '', actEnd: '' };
     modalEl.innerHTML = '<div class="scrim" data-act="scrim"><form class="sheet" id="taskForm" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">' + (t ? 'Edit process' : 'Add process') + '</h2>' +
       '<datalist id="groupList">' + groups.map(function(g){ return '<option value="' + esc(g) + '">'; }).join('') + '</datalist>' +
@@ -593,8 +857,8 @@ tr.grp td.gfill{background:var(--surface-2);font-size:11.5px;color:var(--muted);
       '<div class="actions"><div class="r"><button type="button" class="btn" data-act="close-modal">Cancel</button><button type="submit" class="btn primary">Create copy</button></div></div></form></div>';
     var f = document.getElementById('f-dname'); if(f){ f.focus(); f.select(); }
   }
-  function openRenameModal(group){
-    modalState = { type: 'rename', group: group };
+  function openRenameModal(group, pid){
+    modalState = { type: 'rename', group: group, pid: pid || selectedId };
     modalEl.innerHTML = '<div class="scrim" data-act="scrim"><form class="sheet narrow" id="renameForm" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">Rename main process</h2>' +
       '<p class="note">This renames it for every sub process under it. Use the name of another main process to merge the two.</p>' +
       fld('f-gname', 'Main process', 'text', group) + '<p class="err" id="formErr" role="alert"></p>' +
@@ -660,6 +924,7 @@ tr.grp td.gfill{background:var(--surface-2);font-size:11.5px;color:var(--muted);
 
   function helpHTML(){
     return '<details class="help"><summary>How to edit this log</summary><ul>' +
+      '<li><b>Find your way around:</b> choose All projects at the top to see every job together. Use the filters to narrow by client, person, process, status or time. Move the calendar with the slider, the week and month buttons, or by dragging it.</li>' +
       '<li><b>Edit a project:</b> Edit project changes the name, client, PO number and subject notes. Delete project is at the bottom of that window.</li>' +
       '<li><b>Add a new project:</b> New project at the top. Duplicate copies the current project\'s processes and people in charge as a starting point, without actual dates.</li>' +
       '<li><b>Subject images:</b> Add images uploads photos or drawings. Edit on an image changes its caption or order, or deletes it.</li>' +
@@ -711,7 +976,7 @@ tr.grp td.gfill{background:var(--surface-2);font-size:11.5px;color:var(--muted);
   }
   function moveTask(id, dir){
     var t = tasks.filter(function(x){ return x.id === id; })[0]; if(!t) return;
-    var g = groupsOf(tasks).filter(function(x){ return x.name === t.group; })[0]; if(!g) return;
+    var g = groupsOf(projTasks(t.projectId)).filter(function(x){ return x.name === t.group; })[0]; if(!g) return;
     var i = g.tasks.indexOf(t), other = g.tasks[i + dir]; if(!other) return;
     run(function(){ return api('POST', '/api/tasks/swap', { a: id, b: other.id }); });
   }
@@ -778,14 +1043,14 @@ tr.grp td.gfill{background:var(--surface-2);font-size:11.5px;color:var(--muted);
     if(ae && !as) as = ae;
     if(as && ae && ae < as){ setErr('The finish date is before the start date.'); return; }
     var data = { group: group, name: name, incharge: val('f-who'), planStart: ps, planDue: pd, actStart: as, actEnd: ae };
-    var id = modalState && modalState.id, pid = selectedId;
+    var id = modalState && modalState.id, pid = (modalState && modalState.pid) || selectedId;
     var old = id ? tasks.filter(function(t){ return t.id === id; })[0] : null;
     closeModal();
     if(id){
-      if(old && old.group !== group) data.order = orderFor(group, id);
+      if(old && old.group !== group) data.order = orderFor(group, id, pid);
       run(function(){ return api('PATCH', '/api/tasks/' + id, data); }, 'Process saved');
     } else {
-      data.order = orderFor(group);
+      data.order = orderFor(group, null, pid);
       run(function(){ return api('POST', '/api/projects/' + pid + '/tasks', data); }, 'Process added');
     }
   }
@@ -803,7 +1068,7 @@ tr.grp td.gfill{background:var(--surface-2);font-size:11.5px;color:var(--muted);
   }
   function submitRename(e){
     e.preventDefault();
-    var to = val('f-gname'), from = modalState && modalState.group, pid = selectedId;
+    var to = val('f-gname'), from = modalState && modalState.group, pid = (modalState && modalState.pid) || selectedId;
     if(!to){ setErr('Enter a name.'); return; }
     if(to === from){ closeModal(); return; }
     closeModal();
@@ -849,6 +1114,14 @@ tr.grp td.gfill{background:var(--surface-2);font-size:11.5px;color:var(--muted);
     if(act === 'lb-bg'){ if(e.target === el) closeModal(); return; }
     if(act === 'lb-prev'){ if(modalState && modalState.i > 0){ modalState.i--; drawLightbox(); } return; }
     if(act === 'lb-next'){ if(modalState && modalState.i < images.length - 1){ modalState.i++; drawLightbox(); } return; }
+    if(act === 'cal-prev' || act === 'cal-next'){
+      var cw = appEl.querySelector('.sched-wrap');
+      if(cw) cw.scrollBy({ left: (act === 'cal-prev' ? -1 : 1) * (+el.dataset.days || 7) * DW, behavior: 'smooth' });
+      return;
+    }
+    if(act === 'cal-today'){ var tw = appEl.querySelector('.sched-wrap'); if(tw) scrollToToday(tw, true); return; }
+    if(act === 'reset-filters'){ filters = { q: '', client: '', who: '', group: '', status: '', time: '', from: '', to: '' }; needScroll = true; render(); return; }
+    if(act === 'open-project'){ selectProject(el.dataset.id); window.scrollTo(0, 0); return; }
     if(!canEdit) return;
     if(act === 'new-project') openProjectModal(null);
     else if(act === 'edit-project'){ var p = currentProject(); if(p) openProjectModal(p); }
@@ -862,7 +1135,7 @@ tr.grp td.gfill{background:var(--surface-2);font-size:11.5px;color:var(--muted);
     else if(act === 'task-reopen') quick(el.dataset.id, { actEnd: '' }, 'Reopened');
     else if(act === 'load-template') loadTemplate();
     else if(act === 'duplicate-project'){ var dp = currentProject(); if(dp) openDuplicateModal(dp); }
-    else if(act === 'rename-group') openRenameModal(el.dataset.group);
+    else if(act === 'rename-group') openRenameModal(el.dataset.group, el.dataset.pid);
     else if(act === 'move-up') moveTask(el.dataset.id, -1);
     else if(act === 'move-down') moveTask(el.dataset.id, 1);
     else if(act === 'add-images'){ var inp = document.getElementById('imgInput'); if(inp) inp.click(); }
@@ -894,10 +1167,31 @@ tr.grp td.gfill{background:var(--surface-2);font-size:11.5px;color:var(--muted);
     else if(e.target.id === 'imgForm') submitImage(e);
   });
   document.addEventListener('change', function(e){
-    if(e.target.id === 'projectSelect') selectProject(e.target.value);
+    var tid = e.target.id || '';
+    if(tid === 'projectSelect') selectProject(e.target.value);
+    else if(/^flt-/.test(tid) && tid !== 'flt-q'){
+      var k = tid.slice(4);
+      filters[k] = e.target.value;
+      if(k === 'client' && e.target.value && selectedId !== ALL && projects.length > 1){
+        selectedId = ALL; lsSet('projectlog.selected', ALL); setScope(); needScroll = true;
+      }
+      if(k === 'time' || k === 'from' || k === 'to') needScroll = true;
+      render();
+    }
+    else if(tid === 'zoomSel') setZoom(+e.target.value);
     else if(e.target.id === 'imgInput'){ var fl = e.target.files; uploadImages(fl); e.target.value = ''; }
   });
+  document.addEventListener('input', function(e){
+    var tid = e.target.id;
+    if(tid === 'calSlider'){ var w = appEl.querySelector('.sched-wrap'); if(w) w.scrollLeft = +e.target.value; }
+    else if(tid === 'flt-q'){ filters.q = e.target.value; render(); }
+  });
   document.addEventListener('keydown', function(e){
+    if(e.target && e.target.id === 'calSlider' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')){
+      var sw = appEl.querySelector('.sched-wrap');
+      if(sw){ e.preventDefault(); sw.scrollBy({ left: (e.key === 'ArrowLeft' ? -1 : 1) * DW * 7, behavior: 'smooth' }); }
+      return;
+    }
     if(!modalState) return;
     if(e.key === 'Escape'){ closeModal(); return; }
     if(modalState.type === 'lightbox'){
@@ -905,6 +1199,30 @@ tr.grp td.gfill{background:var(--surface-2);font-size:11.5px;color:var(--muted);
       else if(e.key === 'ArrowRight' && modalState.i < images.length - 1){ modalState.i++; drawLightbox(); }
     }
   });
+
+  /* calendar: keep the slider in step with scrolling, and drag to pan with the mouse */
+  document.addEventListener('scroll', function(e){
+    if(e.target && e.target.classList && e.target.classList.contains('sched-wrap')) syncSlider();
+  }, true);
+  window.addEventListener('resize', syncSlider);
+  var drag = null;
+  document.addEventListener('mousedown', function(e){
+    if(e.button !== 0 || !e.target.closest) return;
+    var w = e.target.closest('.sched-wrap');
+    if(!w || !e.target.closest('table') || e.target.closest('button,input,select,a')) return;
+    drag = { w: w, x: e.clientX, y: e.clientY, sl: w.scrollLeft, st: w.scrollTop, moved: false };
+  });
+  document.addEventListener('mousemove', function(e){
+    if(!drag) return;
+    var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if(!drag.moved){
+      if(Math.abs(dx) + Math.abs(dy) < 4) return;
+      drag.moved = true; drag.w.classList.add('dragging');
+    }
+    drag.w.scrollLeft = drag.sl - dx; drag.w.scrollTop = drag.st - dy;
+    e.preventDefault();
+  });
+  document.addEventListener('mouseup', function(){ if(drag){ drag.w.classList.remove('dragging'); drag = null; } });
 
   /* live refresh: poll while the tab is visible */
   setInterval(function(){ if(document.visibilityState === 'visible' && !modalState) load(false); }, POLL_MS);

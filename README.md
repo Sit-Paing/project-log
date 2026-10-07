@@ -48,6 +48,19 @@ Open the link, press **Unlock editing**, and enter the passcode. The browser rem
 **Editing on · Lock** turns it off again. To change the passcode, run step 5 again; everyone is asked to
 unlock again.
 
+## Viewing: calendar and filters
+
+| To do this | Use |
+| --- | --- |
+| See every job together | Top-right dropdown, **All projects**. Each project gets a green banner with an **Open** button. |
+| Narrow the list | The filter bar: search, client, in charge, main process, status, time (this week, next 2 weeks, this month, next month, last 30 days, or a custom range). **Reset filters** clears them. |
+| Move the calendar | The slider, **Week** and **Month** buttons, **Today**, or drag the calendar with the mouse (swipe on a phone). **Zoom** changes the day width. |
+| Keep status in view | **Process**, **Status** and **PLAN / ACTUAL** stay frozen on the left while the days scroll. On a phone the status also shows under the process name. |
+
+Picking a client while looking at one project switches to All projects, so you see that client's jobs.
+
+The logo is `public/logo.png` and the tab icon is `public/favicon.png` / `public/favicon.ico`. Replace those files to change them.
+
 ## Managing projects
 
 Unlock editing first. Viewers see everything but none of these controls.
