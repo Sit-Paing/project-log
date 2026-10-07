@@ -591,6 +591,13 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     'Started today': ['เริ่มวันนี้แล้ว', 'ယနေ့ စတင်ပြီး'],
     'Finished today': ['เสร็จวันนี้แล้ว', 'ယနေ့ ပြီးဆုံးပြီး'],
     'Reopened': ['เปิดใหม่แล้ว', 'ပြန်ဖွင့်ပြီး'],
+    'Export to Excel': ['ส่งออก Excel', 'Excel သို့ ထုတ်ရန်'],
+    'Preparing Excel file…': ['กำลังสร้างไฟล์ Excel…', 'Excel ဖိုင် ပြင်ဆင်နေသည်…'],
+    'Excel file downloaded': ['ดาวน์โหลดไฟล์ Excel แล้ว', 'Excel ဖိုင် ဒေါင်းလုဒ်ပြီးပါပြီ'],
+    'Could not create the Excel file. Check your connection and try again.': ['สร้างไฟล์ Excel ไม่ได้ ตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง', 'Excel ဖိုင် မဖန်တီးနိုင်ပါ။ ချိတ်ဆက်မှုကို စစ်ပြီး ထပ်ကြိုးစားပါ။'],
+    'Nothing to export. Change the filters first.': ['ไม่มีข้อมูลให้ส่งออก กรุณาเปลี่ยนตัวกรองก่อน', 'ထုတ်ရန် မရှိပါ။ စစ်ထုတ်မှုကို အရင်ပြောင်းပါ။'],
+    'Processes': ['ขั้นตอน', 'လုပ်ငန်းစဉ်များ'],
+    'Days late': ['วันที่ล่าช้า', 'နောက်ကျသည့်ရက်'],
     'Request failed': ['คำขอล้มเหลว', 'တောင်းဆိုမှု မအောင်မြင်ပါ'],
     'How to edit this log': ['วิธีแก้ไขบันทึกนี้', 'ဤမှတ်တမ်းကို ပြင်ဆင်ပုံ'],
     'Find your way around:': ['การใช้งานเบื้องต้น:', 'အသုံးပြုပုံ အကျဉ်း -'],
@@ -904,7 +911,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
       h += '<div class="fl"><label for="flt-from">From</label><input id="flt-from" type="date" value="' + esc(filters.from) + '"></div>' +
         '<div class="fl"><label for="flt-to">To</label><input id="flt-to" type="date" value="' + esc(filters.to) + '"></div>';
     }
-    h += '<div class="f-count mono">' + shown + ' of ' + total + ' processes</div>';
+    h += '<div class="f-count mono">' + shown + ' of ' + total + ' processes</div><button class="btn" data-act="export-xlsx">Export to Excel</button>';
     if(filtersActive()) h += '<button class="btn" data-act="reset-filters">Reset filters</button>';
     return h + '</section>';
   }
@@ -1149,6 +1156,114 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
       }
     });
     return h + '</tbody></table>';
+  }
+
+
+  /* ---------- export to Excel (built in the browser, nothing is sent anywhere) ---------- */
+  function loadExcelJS(){
+    if(window.ExcelJS) return Promise.resolve();
+    return new Promise(function(resolve, reject){
+      var el = document.createElement('script');
+      el.src = '/vendor/exceljs.min.js';
+      el.onload = resolve; el.onerror = function(){ reject(new Error('library')); };
+      document.head.appendChild(el);
+    });
+  }
+  function xlDate(n){ return n == null ? null : new Date(n * MS); }
+  function xlFill(argb){ return { type: 'pattern', pattern: 'solid', fgColor: { argb: argb } }; }
+  function exportExcel(){
+    var wide = selectedId === ALL || view === 'timeline';
+    var list = filterTasks(wide ? allTasks : tasks);
+    if(!list.length){ toast('Nothing to export. Change the filters first.', true); return; }
+    toast('Preparing Excel file…');
+    var rows = [];
+    projects.forEach(function(p){
+      var ts = list.filter(function(t){ return t.projectId === p.id; });
+      if(!ts.length) return;
+      groupsOf(ts).forEach(function(g){ g.tasks.forEach(function(t){ rows.push({ p: p, t: t }); }); });
+    });
+    var HEAD = { font: { bold: true, color: { argb: 'FFFFFFFF' } }, fill: xlFill('FF1E5C3A'), alignment: { vertical: 'middle', wrapText: true } };
+    loadExcelJS().then(function(){
+      var wb = new ExcelJS.Workbook();
+      wb.creator = 'Project Log';
+
+      /* sheet 1: one line per process */
+      var ws = wb.addWorksheet(tr('Processes'), { views: [{ state: 'frozen', ySplit: 1 }] });
+      ws.columns = [
+        { header: tr('Project'), width: 30 }, { header: tr('Client'), width: 20 }, { header: tr('PO No.'), width: 12 },
+        { header: tr('Main process'), width: 20 }, { header: tr('Sub process'), width: 24 }, { header: tr('In charge'), width: 16 },
+        { header: tr('Plan') + ' – ' + tr('Start'), width: 15 }, { header: tr('Plan') + ' – ' + tr('Due'), width: 15 },
+        { header: tr('Actual') + ' – ' + tr('Start'), width: 15 }, { header: tr('Actual') + ' – ' + tr('Finished'), width: 15 },
+        { header: tr('Status'), width: 16 }, { header: tr('Days late'), width: 11 }
+      ];
+      ws.getRow(1).eachCell(function(c){ c.font = HEAD.font; c.fill = HEAD.fill; c.alignment = HEAD.alignment; });
+      ws.getRow(1).height = 30;
+      rows.forEach(function(r){
+        var t = r.t, pd = parse(t.planDue), ae = parse(t.actEnd), st = statusOf(t), late = '';
+        if(pd != null){ if(ae != null && ae > pd) late = ae - pd; else if(ae == null && TODAY > pd) late = TODAY - pd; }
+        ws.addRow([r.p.name, r.p.client, r.p.po, t.group, t.name, t.incharge,
+          xlDate(parse(t.planStart)), xlDate(pd), xlDate(parse(t.actStart)), xlDate(ae), tr(STATUS_LABEL[st]), late]);
+      });
+      [7, 8, 9, 10].forEach(function(c){ ws.getColumn(c).numFmt = 'dd mmm yyyy'; });
+      ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 12 } };
+
+      /* sheet 2: plan and actual bars over the calendar, like the paper schedule */
+      var rg = calRange(list), r0 = rg[0], r1 = Math.min(rg[1], rg[0] + 400), N = r1 - r0 + 1, LEAD = 7;
+      var tl = wb.addWorksheet(tr('Timeline'), { views: [{ state: 'frozen', xSplit: LEAD, ySplit: 3 }] });
+      var widths = [30, 20, 24, 16, 9, 12, 12];
+      for(var c = 1; c <= LEAD; c++) tl.getColumn(c).width = widths[c - 1];
+      for(var n = r0; n <= r1; n++) tl.getColumn(LEAD + 1 + n - r0).width = 3.4;
+      var lead = [tr('Project'), tr('Main process'), tr('Sub process'), tr('In charge'), '', tr('Start'), tr('Due')];
+      lead.forEach(function(v, i){ var cell = tl.getCell(3, i + 1); cell.value = v; cell.font = HEAD.font; cell.fill = HEAD.fill; });
+      var m0 = null;
+      for(n = r0; n <= r1; n++){
+        var d = toDate(n), col = LEAD + 1 + n - r0, dow = d.getUTCDay();
+        var mk = d.getUTCFullYear() * 12 + d.getUTCMonth();
+        if(mk !== m0){
+          m0 = mk;
+          var endN = n; while(endN < r1 && (function(x){ var q = toDate(x + 1); return q.getUTCFullYear() * 12 + q.getUTCMonth() === mk; })(endN)) endN++;
+          var mc = tl.getCell(1, col); mc.value = MONTHS[d.getUTCMonth()] + ' ' + d.getUTCFullYear();
+          if(endN > n) tl.mergeCells(1, col, 1, LEAD + 1 + endN - r0);
+        }
+        var dc = tl.getCell(2, col), wc = tl.getCell(3, col);
+        dc.value = d.getUTCDate(); wc.value = WD[dow];
+        [dc, wc].forEach(function(c2){
+          c2.alignment = { horizontal: 'center' }; c2.font = { size: 8, bold: n === TODAY };
+          c2.fill = xlFill(n === TODAY ? 'FFD5489A' : (dow === 0 || dow === 6 ? 'FFDDE3DE' : 'FFE9EEE8'));
+          if(n === TODAY) c2.font = { size: 8, bold: true, color: { argb: 'FFFFFFFF' } };
+        });
+      }
+      for(var hc = 1; hc <= LEAD; hc++){ tl.getCell(1, hc).fill = HEAD.fill; tl.getCell(2, hc).fill = HEAD.fill; }
+      tl.getCell(1, LEAD + 1).font = { bold: true };
+      function bars(row, s0, e0, argb){
+        for(var x = r0; x <= r1; x++){
+          var cell = row.getCell(LEAD + 1 + x - r0), dw = toDate(x).getUTCDay();
+          if(s0 != null && e0 != null && x >= s0 && x <= e0) cell.fill = xlFill(argb);
+          else if(x === TODAY) cell.fill = xlFill('FFF7DCEB');
+          else if(dw === 0 || dw === 6) cell.fill = xlFill('FFF0F3EF');
+        }
+      }
+      rows.forEach(function(r){
+        var t = r.t, ps = parse(t.planStart), pd = parse(t.planDue), as = parse(t.actStart), ae = parse(t.actEnd);
+        var pS = ps != null ? ps : pd, pE = pd != null ? pd : ps, aE = as != null ? (ae != null ? ae : Math.max(as, TODAY)) : null;
+        var a = tl.addRow([r.p.name, t.group, t.name, t.incharge, tr('PLAN'), xlDate(ps), xlDate(pd)]);
+        var b = tl.addRow(['', '', '', '', tr('ACTUAL'), xlDate(as), ae != null ? xlDate(ae) : (as != null ? tr('ongoing') : '')]);
+        for(var k = 1; k <= 4; k++) tl.mergeCells(a.number, k, b.number, k);
+        for(k = 1; k <= 4; k++) tl.getCell(a.number, k).alignment = { vertical: 'middle', wrapText: true };
+        a.getCell(5).fill = xlFill('FF2C7A4B'); a.getCell(5).font = { bold: true, size: 9, color: { argb: 'FFFFFFFF' } };
+        b.getCell(5).fill = xlFill('FFE6A92B'); b.getCell(5).font = { bold: true, size: 9, color: { argb: 'FF2A1E00' } };
+        [a, b].forEach(function(row){ row.getCell(6).numFmt = 'd mmm'; row.getCell(7).numFmt = 'd mmm'; row.getCell(6).alignment = { horizontal: 'left' }; row.getCell(7).alignment = { horizontal: 'left' }; });
+        bars(a, pS, pE, 'FF2C7A4B'); bars(b, as, aE, 'FFE6A92B');
+      });
+      return wb.xlsx.writeBuffer();
+    }).then(function(buf){
+      var blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = 'project-log-' + iso(TODAY) + '.xlsx';
+      document.body.appendChild(a); a.click();
+      setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+      toast('Excel file downloaded');
+    }).catch(function(){ toast('Could not create the Excel file. Check your connection and try again.', true); });
   }
 
   function barCells(r0, r1, s, e, kind, live, tip){
@@ -1599,6 +1714,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
       });
       lsSet('projectlog.tl2', JSON.stringify(tlOpen)); render(); return;
     }
+    if(act === 'export-xlsx'){ exportExcel(); return; }
     if(act === 'cal-today'){ var tw = appEl.querySelector('.sched-wrap'); if(tw) scrollToToday(tw, true); return; }
     if(act === 'reset-filters'){ filters = { q: '', client: '', project: '', who: '', group: '', status: '', time: '', from: '', to: '' }; needScroll = true; render(); return; }
     if(act === 'open-project'){ selectProject(el.dataset.id); window.scrollTo(0, 0); return; }
