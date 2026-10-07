@@ -311,6 +311,10 @@ input[type=date]{min-height:38px;max-width:100%}
 tr.tl.l0 .pname{font-size:14px}
 tr.tl.l1 td.c-proc{padding-left:26px}
 tr.tl.l1 .pname{font-weight:500}
+tr.tl.l2 td.c-proc{padding-left:46px}
+tr.tl.l2 .pname{font-weight:400;font-size:12.5px}
+tr.tl.l2 td.c-proc .tl-tg{display:none}
+.tl-help{display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap}
 @media (pointer:coarse){.view-seg button{min-height:42px}}
 </style>
 </head>
@@ -352,7 +356,7 @@ tr.tl.l1 .pname{font-weight:500}
   var modalState = null;
   var ALL = '__all__';
   var view = lsGet('projectlog.view') === 'timeline' ? 'timeline' : 'schedule';
-  var tlOpen = (function(){ try { return JSON.parse(lsGet('projectlog.tl') || '{}') || {}; } catch(e){ return {}; } })();
+  var tlOpen = (function(){ try { return JSON.parse(lsGet('projectlog.tl2') || '{}') || {}; } catch(e){ return {}; } })();
   var filters = { q: '', client: '', who: '', group: '', status: '', time: '', from: '', to: '' };
   var DW = (function(){ var n = parseInt(lsGet('projectlog.dw'), 10); return [20, 28, 40, 56].indexOf(n) >= 0 ? n : 28; })();
 
@@ -727,7 +731,7 @@ tr.tl.l1 .pname{font-weight:500}
     } else if(!list.length){
       html += '<div class="sched-wrap"><div class="empty"><h2>Nothing matches these filters</h2><p>Try a wider time range or clear a filter.</p><div class="row"><button class="btn primary" data-act="reset-filters">Reset filters</button></div></div></div>';
     } else {
-      html += (isTL ? '<p class="period-note">One row per project. Press ▸ to show its main processes, or Open to see every sub process.<button class="btn" data-act="tl-all" style="margin-left:10px">Expand / collapse all</button></p>' : '') +
+      html += (isTL ? '<div class="period-note tl-help"><span>Each project opens into its main processes and sub processes. Press ▸ or ▾ to open or close one, or choose a level:</span><span class="view-seg" role="group" aria-label="Detail level"><button data-act="tl-level" data-level="0">Projects</button><button data-act="tl-level" data-level="1">+ Main processes</button><button data-act="tl-level" data-level="2">+ Sub processes</button></span></div>' : '') +
         calNavHTML() + '<div class="sched-wrap" tabindex="0" aria-label="Schedule calendar" style="--dw:' + DW + 'px">' + (isTL ? timelineHTML(list) : tableHTML(list, isAll)) + '</div>';
     }
     if(canEdit) html += helpHTML();
@@ -770,7 +774,8 @@ tr.tl.l1 .pname{font-weight:500}
     var actTip = e.name + ' actual: ' + fmt(g.as) + (g.live ? ' – ongoing' : (g.ae !== g.as ? ' – ' + fmt(g.ae) : ''));
     var who = g.who.length ? esc(g.who.slice(0, 2).join(', ')) + (g.who.length > 2 ? ' +' + (g.who.length - 2) : '') : '<span style="color:var(--muted)">—</span>';
     var lead = '';
-    if(e.pid) lead += '<button class="tl-tg" data-act="tl-toggle" data-id="' + esc(e.pid) + '" aria-expanded="' + !!e.open + '" aria-label="' + (e.open ? 'Hide' : 'Show') + ' main processes of ' + esc(e.name) + '">' + (e.open ? '▾' : '▸') + '</button>';
+    if(e.key) lead += '<button class="tl-tg" data-act="tl-toggle" data-id="' + esc(e.key) + '" aria-expanded="' + !!e.open + '" aria-label="' + (e.open ? 'Hide' : 'Show') + ' details of ' + esc(e.name) + '">' + (e.open ? '▾' : '▸') + '</button>';
+    else if(e.level > 0) lead += '<span class="tl-tg" aria-hidden="true"></span>';
     var name = '<span class="pname ro">' + esc(e.name || 'Untitled') + '</span>' + (e.sub ? '<span class="pname-sub">' + esc(e.sub) + '</span>' : '') +
       (e.openId ? '<button class="mini" data-act="open-project" data-id="' + esc(e.openId) + '" style="margin-top:4px">Open</button>' : '');
     var aeTxt = g.as == null ? '—' : (g.live ? 'ongoing' : fmt(g.ae));
@@ -802,11 +807,17 @@ tr.tl.l1 .pname{font-weight:500}
     projects.forEach(function(pr){
       var ts = list.filter(function(t){ return t.projectId === pr.id; });
       if(!ts.length) return;
-      var open = !!tlOpen[pr.id];
-      h += tlRows({ level: 0, pid: pr.id, open: open, openId: pr.id, name: pr.name, sub: (pr.client || 'No client') + (pr.po ? ' · PO ' + pr.po : ''), ag: agg(ts) }, r0, r1);
+      var open = tlOpen[pr.id] !== false;
+      h += tlRows({ level: 0, key: pr.id, open: open, openId: pr.id, name: pr.name, sub: (pr.client || 'No client') + (pr.po ? ' · PO ' + pr.po : ''), ag: agg(ts) }, r0, r1);
       if(open){
         groupsOf(ts).forEach(function(g){
-          h += tlRows({ level: 1, name: g.name, sub: g.tasks.length + (g.tasks.length === 1 ? ' sub process' : ' sub processes'), ag: agg(g.tasks) }, r0, r1);
+          var gk = pr.id + '|' + g.name, gopen = tlOpen[gk] !== false;
+          h += tlRows({ level: 1, key: gk, open: gopen, name: g.name, sub: g.tasks.length + (g.tasks.length === 1 ? ' sub process' : ' sub processes'), ag: agg(g.tasks) }, r0, r1);
+          if(gopen){
+            g.tasks.forEach(function(t){
+              h += tlRows({ level: 2, name: t.name, sub: '', ag: agg([t]) }, r0, r1);
+            });
+          }
         });
       }
     });
@@ -1251,11 +1262,14 @@ tr.tl.l1 .pname{font-weight:500}
     if(act === 'view-schedule' || act === 'view-timeline'){
       view = act === 'view-timeline' ? 'timeline' : 'schedule'; lsSet('projectlog.view', view); needScroll = true; render(); return;
     }
-    if(act === 'tl-toggle'){ tlOpen[el.dataset.id] = !tlOpen[el.dataset.id]; lsSet('projectlog.tl', JSON.stringify(tlOpen)); render(); return; }
-    if(act === 'tl-all'){
-      var anyClosed = projects.some(function(x){ return !tlOpen[x.id]; });
-      projects.forEach(function(x){ tlOpen[x.id] = anyClosed; });
-      lsSet('projectlog.tl', JSON.stringify(tlOpen)); render(); return;
+    if(act === 'tl-toggle'){ tlOpen[el.dataset.id] = !(tlOpen[el.dataset.id] !== false); lsSet('projectlog.tl2', JSON.stringify(tlOpen)); render(); return; }
+    if(act === 'tl-level'){
+      var lv = +el.dataset.level;
+      projects.forEach(function(pr){
+        tlOpen[pr.id] = lv >= 1;
+        groupsOf(allTasks.filter(function(t){ return t.projectId === pr.id; })).forEach(function(g){ tlOpen[pr.id + '|' + g.name] = lv >= 2; });
+      });
+      lsSet('projectlog.tl2', JSON.stringify(tlOpen)); render(); return;
     }
     if(act === 'cal-today'){ var tw = appEl.querySelector('.sched-wrap'); if(tw) scrollToToday(tw, true); return; }
     if(act === 'reset-filters'){ filters = { q: '', client: '', who: '', group: '', status: '', time: '', from: '', to: '' }; needScroll = true; render(); return; }
