@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="/favicon.png">
 <meta name="theme-color" content="#1E5C3A">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Sans+Thai:wght@400;500;600;700&family=Noto+Sans+Myanmar:wght@400;500;600;700&display=swap">
 <style>
 /* Layout: one working sheet. Project header and status counts on top, then a single
    schedule grid that mirrors the paper summary: process rows in pairs (PLAN green,
@@ -26,9 +26,9 @@
   --accent:#1E5C3A; --accent-ink:#FFFFFF;
   --danger:#B3362B; --danger-wash:#FBE7E4;
   --done-wash:#DEEFE4; --prog-wash:#FBEFD2; --todo-wash:#E7ECE8;
-  --font-display:'Barlow Condensed','Arial Narrow',system-ui,sans-serif;
-  --font-body:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
-  --font-mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+  --font-display:'Barlow Condensed','Noto Sans Thai','Noto Sans Myanmar','Leelawadee UI','Myanmar Text','Thonburi','Myanmar Sangam MN','Arial Narrow',system-ui,sans-serif;
+  --font-body:'IBM Plex Sans','Noto Sans Thai','Noto Sans Myanmar','Leelawadee UI','Myanmar Text','Thonburi','Myanmar Sangam MN',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-mono:'IBM Plex Mono','Noto Sans Thai','Noto Sans Myanmar','Leelawadee UI','Myanmar Text',ui-monospace,Menlo,Consolas,monospace;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
@@ -316,6 +316,15 @@ tr.tl.l2 .pname{font-weight:400;font-size:12.5px}
 tr.tl.l2 td.c-proc .tl-tg{display:none}
 .tl-help{display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap}
 @media (pointer:coarse){.view-seg button{min-height:42px}}
+/* Thai and Myanmar: no letter-spacing or capitals (they break the script), a little more line height */
+html[lang="th"] *,html[lang="my"] *{letter-spacing:normal!important;text-transform:none!important}
+html[lang="th"] body{line-height:1.6}
+html[lang="my"] body{line-height:1.8}
+html[lang="th"] td.ty,html[lang="my"] td.ty{font-size:11px}
+html[lang="my"] .btn,html[lang="my"] .mini,html[lang="my"] .pill{line-height:1.7}
+html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
+.lang select{padding:7px 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+@media (max-width:900px){.lang select{font-size:16px}}
 </style>
 </head>
 <body>
@@ -372,6 +381,319 @@ tr.tl.l2 td.c-proc .tl-tg{display:none}
   function lsGet(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
   function lsSet(k, v){ try { localStorage.setItem(k, v); } catch(e){} }
   function lsDel(k){ try { localStorage.removeItem(k); } catch(e){} }
+
+  /* ---------- language (English / Thai / Myanmar) ----------
+     The page is written in English. For Thai and Myanmar, every piece of interface text is looked up
+     in DICT (English text -> [Thai, Myanmar]) right after it is drawn. Text you typed (project names,
+     processes, notes, people) is never translated. */
+  var LANGS = ['en', 'th', 'my'];
+  var MONTHS_L = {
+    en: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+    th: ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'],
+    my: ['ဇန်','ဖေ','မတ်','ဧပြီ','မေ','ဇွန်','ဇူ','ဩ','စက်','အောက်','နို','ဒီ']
+  };
+  var WD_L = {
+    en: ['S','M','T','W','T','F','S'],
+    th: ['อา','จ','อ','พ','พฤ','ศ','ส'],
+    my: ['နွေ','လာ','ဂါ','ဟူး','ကြာ','သော','နေ']
+  };
+  var lang = (function(){
+    var s = lsGet('projectlog.lang');
+    if(LANGS.indexOf(s) >= 0) return s;
+    var n = ((navigator.language || 'en') + '').slice(0, 2).toLowerCase();
+    return LANGS.indexOf(n) >= 0 ? n : 'en';
+  })();
+
+  var DICT = {
+    'Project Log': ['บันทึกโปรเจกต์', 'ပရောဂျက် မှတ်တမ်း'],
+    'Language': ['ภาษา', 'ဘာသာစကား'],
+    'View': ['มุมมอง', 'မြင်ကွင်း'],
+    'Schedule': ['ตารางงาน', 'အလုပ်ဇယား'],
+    'Timeline': ['ไทม์ไลน์', 'အချိန်ကာလ'],
+    'Project': ['โปรเจกต์', 'ပရောဂျက်'],
+    'Projects': ['โปรเจกต์', 'ပရောဂျက်များ'],
+    'New project': ['โปรเจกต์ใหม่', 'ပရောဂျက်အသစ်'],
+    'Editing on · Lock': ['กำลังแก้ไข · ล็อก', 'ပြင်ဆင်နေသည် · သော့ခတ်ရန်'],
+    'Turn editing off on this device': ['ปิดการแก้ไขบนอุปกรณ์นี้', 'ဤစက်တွင် ပြင်ဆင်ခွင့် ပိတ်ရန်'],
+    'Unlock editing': ['ปลดล็อกการแก้ไข', 'ပြင်ဆင်ခွင့် ဖွင့်ရန်'],
+    'All projects': ['ทุกโปรเจกต์', 'ပရောဂျက် အားလုံး'],
+    'Project timeline': ['ไทม์ไลน์โปรเจกต์', 'ပရောဂျက် အချိန်ကာလ'],
+    'Untitled': ['ไม่มีชื่อ', 'အမည်မရှိ'],
+    'Untitled project': ['โปรเจกต์ไม่มีชื่อ', 'အမည်မရှိ ပရောဂျက်'],
+    'Loading projects…': ['กำลังโหลดโปรเจกต์…', 'ပရောဂျက်များ ဖွင့်နေသည်…'],
+    'Could not load the log': ['โหลดบันทึกไม่ได้', 'မှတ်တမ်းကို မဖွင့်နိုင်ပါ'],
+    'Check your connection and try again.': ['ตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง', 'အင်တာနက် ချိတ်ဆက်မှုကို စစ်ပြီး ထပ်ကြိုးစားပါ။'],
+    'Try again': ['ลองอีกครั้ง', 'ထပ်ကြိုးစားရန်'],
+    'No projects yet': ['ยังไม่มีโปรเจกต์', 'ပရောဂျက် မရှိသေးပါ'],
+    'Create a project with its client and PO number, then log each process with a start date, due date and person in charge.': ['สร้างโปรเจกต์พร้อมชื่อลูกค้าและเลข PO จากนั้นบันทึกแต่ละขั้นตอนพร้อมวันเริ่ม วันกำหนดเสร็จ และผู้รับผิดชอบ', 'ဖောက်သည်နှင့် PO နံပါတ်ပါသော ပရောဂျက်တစ်ခု ဖန်တီးပြီး လုပ်ငန်းစဉ်တစ်ခုချင်းစီကို စတင်ရက်၊ ပြီးဆုံးရက်နှင့် တာဝန်ခံတို့ဖြင့် မှတ်တမ်းတင်ပါ။'],
+    'Create the first project': ['สร้างโปรเจกต์แรก', 'ပထမဆုံး ပရောဂျက်ကို ဖန်တီးရန်'],
+    'Nothing has been logged yet. An editor can unlock editing and create the first project.': ['ยังไม่มีการบันทึก ผู้แก้ไขสามารถปลดล็อกการแก้ไขและสร้างโปรเจกต์แรกได้', 'မှတ်တမ်း မရှိသေးပါ။ ပြင်ဆင်ခွင့်ရှိသူသည် ပြင်ဆင်ခွင့်ဖွင့်ပြီး ပထမဆုံး ပရောဂျက်ကို ဖန်တီးနိုင်ပါသည်။'],
+    'Client': ['ลูกค้า', 'ဖောက်သည်'],
+    'Clients': ['ลูกค้า', 'ဖောက်သည်များ'],
+    'PO No.': ['เลข PO', 'PO အမှတ်'],
+    'Planned': ['ช่วงตามแผน', 'စီစဉ်ထားသည့်ကာလ'],
+    'Not scheduled yet': ['ยังไม่ได้กำหนดวัน', 'ရက်မသတ်မှတ်ရသေးပါ'],
+    'No client': ['ไม่มีลูกค้า', 'ဖောက်သည် မရှိ'],
+    'Edit project': ['แก้ไขโปรเจกต์', 'ပရောဂျက် ပြင်ရန်'],
+    'Duplicate': ['ทำสำเนา', 'ကူးယူရန်'],
+    'Progress': ['ความคืบหน้า', 'တိုးတက်မှု'],
+    'Subject': ['หัวข้องาน', 'အကြောင်းအရာ'],
+    'Add images': ['เพิ่มรูปภาพ', 'ပုံများ ထည့်ရန်'],
+    'Hide': ['ซ่อน', 'ဖျောက်ရန်'],
+    'Show': ['แสดง', 'ပြရန်'],
+    'Up to 12 images per project.': ['สูงสุด 12 รูปต่อโปรเจกต์', 'ပရောဂျက်တစ်ခုလျှင် ပုံ 12 ပုံအထိ။'],
+    'Edit': ['แก้ไข', 'ပြင်ရန်'],
+    'Add photos, drawings or sketches that describe this job.': ['เพิ่มรูปถ่าย แบบ หรือภาพร่างที่อธิบายงานนี้', 'ဤအလုပ်ကို ဖော်ပြသော ဓာတ်ပုံ၊ ပုံဆွဲ သို့မဟုတ် ပုံကြမ်းများ ထည့်ပါ။'],
+    'No subject images yet.': ['ยังไม่มีรูปภาพ', 'ပုံ မရှိသေးပါ။'],
+    'Notes': ['บันทึก', 'မှတ်စု'],
+    'No notes yet. Add them from Edit project.': ['ยังไม่มีบันทึก เพิ่มได้จาก แก้ไขโปรเจกต์', 'မှတ်စု မရှိသေးပါ။ ပရောဂျက် ပြင်ရန်မှ ထည့်နိုင်ပါသည်။'],
+    'Subject image': ['รูปภาพประกอบ', 'ပုံ'],
+    'View image': ['ดูรูปภาพ', 'ပုံကြည့်ရန်'],
+    'Filters': ['ตัวกรอง', 'စစ်ထုတ်မှုများ'],
+    'Search': ['ค้นหา', 'ရှာဖွေရန်'],
+    'Project, client, PO, process, person': ['โปรเจกต์ ลูกค้า PO ขั้นตอน ผู้รับผิดชอบ', 'ပရောဂျက်၊ ဖောက်သည်၊ PO၊ လုပ်ငန်းစဉ်၊ လူ'],
+    'In charge': ['ผู้รับผิดชอบ', 'တာဝန်ခံ'],
+    'Main process': ['ขั้นตอนหลัก', 'အဓိက လုပ်ငန်းစဉ်'],
+    'Sub process': ['ขั้นตอนย่อย', 'လုပ်ငန်းစဉ်ခွဲ'],
+    'Status': ['สถานะ', 'အခြေအနေ'],
+    'Time': ['ช่วงเวลา', 'အချိန်'],
+    'All clients': ['ลูกค้าทั้งหมด', 'ဖောက်သည် အားလုံး'],
+    'Everyone': ['ทุกคน', 'လူတိုင်း'],
+    'All processes': ['ทุกขั้นตอน', 'လုပ်ငန်းစဉ် အားလုံး'],
+    'Any status': ['ทุกสถานะ', 'အခြေအနေ အားလုံး'],
+    'Not done': ['ยังไม่เสร็จ', 'မပြီးသေး'],
+    'In progress': ['กำลังดำเนินการ', 'ဆောင်ရွက်နေဆဲ'],
+    'Overdue': ['เกินกำหนด', 'နောက်ကျနေသည်'],
+    'Not started': ['ยังไม่เริ่ม', 'မစတင်သေး'],
+    'Done': ['เสร็จแล้ว', 'ပြီးစီး'],
+    'Any time': ['ทุกช่วงเวลา', 'အချိန်မရွေး'],
+    'This week': ['สัปดาห์นี้', 'ဤအပတ်'],
+    'Next 2 weeks': ['2 สัปดาห์ข้างหน้า', 'နောက် 2 ပတ်'],
+    'This month': ['เดือนนี้', 'ဤလ'],
+    'Next month': ['เดือนหน้า', 'နောက်လ'],
+    'Last 30 days': ['30 วันที่ผ่านมา', 'လွန်ခဲ့သော ရက် 30'],
+    'Custom range…': ['กำหนดช่วงเอง…', 'စိတ်ကြိုက်ကာလ…'],
+    'From': ['จาก', 'မှ'],
+    'To': ['ถึง', 'သို့'],
+    'Reset filters': ['ล้างตัวกรอง', 'စစ်ထုတ်မှု ရှင်းရန်'],
+    'Plan': ['แผน', 'အစီအစဉ်'],
+    'Actual': ['จริง', 'အမှန်တကယ်'],
+    'PLAN': ['แผน', 'အစီအစဉ်'],
+    'ACTUAL': ['จริง', 'အမှန်'],
+    'Add process': ['เพิ่มขั้นตอน', 'လုပ်ငန်းစဉ် ထည့်ရန်'],
+    'No processes logged': ['ยังไม่มีขั้นตอนที่บันทึก', 'လုပ်ငန်းစဉ် မှတ်တမ်း မရှိသေးပါ'],
+    'Start from the standard set (ME design, EE design, parts order, automation) or add your own processes one by one.': ['เริ่มจากชุดมาตรฐาน (ออกแบบ ME ออกแบบ EE สั่งชิ้นส่วน ระบบอัตโนมัติ) หรือเพิ่มขั้นตอนเองทีละรายการ', 'စံလုပ်ငန်းစဉ်များ (ME ဒီဇိုင်း၊ EE ဒီဇိုင်း၊ အစိတ်အပိုင်း မှာယူမှု၊ အလိုအလျောက်စနစ်) မှ စတင်ပါ သို့မဟုတ် သင့်ကိုယ်ပိုင် လုပ်ငန်းစဉ်များကို တစ်ခုချင်း ထည့်ပါ။'],
+    'Load standard processes': ['ใช้ขั้นตอนมาตรฐาน', 'စံလုပ်ငန်းစဉ်များ ထည့်ရန်'],
+    'No processes have been added yet.': ['ยังไม่มีการเพิ่มขั้นตอน', 'လုပ်ငန်းစဉ် မထည့်ရသေးပါ။'],
+    'Nothing matches these filters': ['ไม่พบรายการที่ตรงกับตัวกรอง', 'စစ်ထုတ်မှုနှင့် ကိုက်ညီသည့်အရာ မရှိပါ'],
+    'Try a wider time range or clear a filter.': ['ลองขยายช่วงเวลาหรือล้างตัวกรอง', 'အချိန်ကာလကို ပိုကျယ်ပါ သို့မဟုတ် စစ်ထုတ်မှုကို ရှင်းပါ။'],
+    'No processes fall in this period. The calendar below shows it empty; change the time filter or press Reset filters.': ['ไม่มีขั้นตอนในช่วงนี้ ปฏิทินด้านล่างจึงว่างเปล่า เปลี่ยนตัวกรองเวลาหรือกด ล้างตัวกรอง', 'ဤကာလတွင် လုပ်ငန်းစဉ် မရှိပါ။ အောက်ပါ ပြက္ခဒိန်သည် ဗလာဖြစ်နေသည်။ အချိန်စစ်ထုတ်မှုကို ပြောင်းပါ သို့မဟုတ် စစ်ထုတ်မှု ရှင်းရန် ကို နှိပ်ပါ။'],
+    'Each project opens into its main processes and sub processes. Press ▸ or ▾ to open or close one, or choose a level:': ['แต่ละโปรเจกต์ขยายเป็นขั้นตอนหลักและขั้นตอนย่อย กด ▸ หรือ ▾ เพื่อเปิดหรือปิด หรือเลือกระดับ:', 'ပရောဂျက်တစ်ခုချင်းစီသည် အဓိက လုပ်ငန်းစဉ်နှင့် လုပ်ငန်းစဉ်ခွဲများအဖြစ် ဖွင့်လာမည်။ ▸ သို့မဟုတ် ▾ ကိုနှိပ်၍ ဖွင့်/ပိတ်ပါ၊ သို့မဟုတ် အဆင့်ကို ရွေးပါ -'],
+    '+ Main processes': ['+ ขั้นตอนหลัก', '+ အဓိက လုပ်ငန်းစဉ်'],
+    '+ Sub processes': ['+ ขั้นตอนย่อย', '+ လုပ်ငန်းစဉ်ခွဲ'],
+    'Detail level': ['ระดับรายละเอียด', 'အသေးစိတ်အဆင့်'],
+    'Today': ['วันนี้', 'ယနေ့'],
+    '« Month': ['« เดือน', '« လ'],
+    '‹ Week': ['‹ สัปดาห์', '‹ ပတ်'],
+    'Week ›': ['สัปดาห์ ›', 'ပတ် ›'],
+    'Month »': ['เดือน »', 'လ »'],
+    'Back one month': ['ย้อนหนึ่งเดือน', 'တစ်လ နောက်ပြန်'],
+    'Back one week': ['ย้อนหนึ่งสัปดาห์', 'တစ်ပတ် နောက်ပြန်'],
+    'Forward one week': ['ไปหนึ่งสัปดาห์', 'တစ်ပတ် ရှေ့သို့'],
+    'Forward one month': ['ไปหนึ่งเดือน', 'တစ်လ ရှေ့သို့'],
+    'Slide the calendar left and right': ['เลื่อนปฏิทินซ้ายขวา', 'ပြက္ခဒိန်ကို ဘယ်ညာ ရွှေ့ပါ'],
+    'Zoom': ['ซูม', 'ချဲ့/ချုံ့'],
+    'Compact': ['แคบ', 'သေးငယ်'],
+    'Normal': ['ปกติ', 'ပုံမှန်'],
+    'Wide': ['กว้าง', 'ကျယ်'],
+    'Extra wide': ['กว้างมาก', 'အလွန်ကျယ်'],
+    'Drag the calendar to move it': ['ลากปฏิทินเพื่อเลื่อน', 'ပြက္ခဒိန်ကို ဆွဲ၍ ရွှေ့ပါ'],
+    'Schedule calendar': ['ปฏิทินตารางงาน', 'အလုပ်ဇယား ပြက္ခဒိန်'],
+    'Plan or actual': ['แผนหรือจริง', 'အစီအစဉ် သို့မဟုတ် အမှန်'],
+    'Process': ['ขั้นตอน', 'လုပ်ငန်းစဉ်'],
+    'Start': ['เริ่ม', 'စတင်'],
+    'Due': ['กำหนดเสร็จ', 'ပြီးဆုံးရက်'],
+    'Rename': ['เปลี่ยนชื่อ', 'အမည်ပြောင်း'],
+    '+ Add': ['+ เพิ่ม', '+ ထည့်'],
+    'ongoing': ['กำลังทำ', 'ဆောင်ရွက်နေ'],
+    'Open': ['เปิด', 'ဖွင့်ရန်'],
+    'Close': ['ปิด', 'ပိတ်ရန်'],
+    'Previous': ['ก่อนหน้า', 'ယခင်'],
+    'Next': ['ถัดไป', 'နောက်'],
+    'Cancel': ['ยกเลิก', 'မလုပ်တော့ပါ'],
+    'Save': ['บันทึก', 'သိမ်းရန်'],
+    'Delete': ['ลบ', 'ဖျက်ရန်'],
+    'Delete project': ['ลบโปรเจกต์', 'ပရောဂျက် ဖျက်ရန်'],
+    'Delete image': ['ลบรูปภาพ', 'ပုံ ဖျက်ရန်'],
+    'Confirm delete': ['ยืนยันการลบ', 'ဖျက်ရန် အတည်ပြု'],
+    'Unlock': ['ปลดล็อก', 'ဖွင့်ရန်'],
+    'Edit passcode': ['รหัสผ่านสำหรับแก้ไข', 'ပြင်ဆင်ရန် လျှို့ဝှက်ကုဒ်'],
+    'Everyone can view the log. Enter the edit passcode to make changes on this device.': ['ทุกคนดูบันทึกได้ ใส่รหัสผ่านสำหรับแก้ไขเพื่อแก้ไขบนอุปกรณ์นี้', 'မည်သူမဆို မှတ်တမ်းကို ကြည့်နိုင်သည်။ ဤစက်တွင် ပြင်ဆင်ရန် ပြင်ဆင်ခွင့် လျှို့ဝှက်ကုဒ်ကို ထည့်ပါ။'],
+    'Enter the passcode.': ['ใส่รหัสผ่าน', 'လျှို့ဝှက်ကုဒ် ထည့်ပါ။'],
+    'That passcode is not right.': ['รหัสผ่านไม่ถูกต้อง', 'လျှို့ဝှက်ကုဒ် မမှန်ပါ။'],
+    'Could not check the passcode. Try again.': ['ตรวจสอบรหัสผ่านไม่ได้ ลองอีกครั้ง', 'လျှို့ဝှက်ကုဒ်ကို မစစ်နိုင်ပါ။ ထပ်ကြိုးစားပါ။'],
+    'Project name': ['ชื่อโปรเจกต์', 'ပရောဂျက် အမည်'],
+    'e.g. BM3 reduce mold clamping gap': ['เช่น BM3 reduce mold clamping gap', 'ဥပမာ - BM3 reduce mold clamping gap'],
+    'PO number': ['เลข PO', 'PO နံပါတ်'],
+    'e.g. 4982427': ['เช่น 4982427', 'ဥပမာ - 4982427'],
+    'Subject notes': ['บันทึกหัวข้องาน', 'အကြောင်းအရာ မှတ်စု'],
+    'Scope, materials, quantities, remarks': ['ขอบเขต วัสดุ จำนวน หมายเหตุ', 'လုပ်ငန်းနယ်ပယ်၊ ပစ္စည်း၊ အရေအတွက်၊ မှတ်ချက်'],
+    'Start with the standard processes (ME design, EE design, parts order, automation)': ['เริ่มด้วยขั้นตอนมาตรฐาน (ออกแบบ ME ออกแบบ EE สั่งชิ้นส่วน ระบบอัตโนมัติ)', 'စံလုပ်ငန်းစဉ်များဖြင့် စတင်ရန် (ME ဒီဇိုင်း၊ EE ဒီဇိုင်း၊ အစိတ်အပိုင်း မှာယူမှု၊ အလိုအလျောက်စနစ်)'],
+    'Create project': ['สร้างโปรเจกต์', 'ပရောဂျက် ဖန်တီးရန်'],
+    'Enter a project name.': ['ใส่ชื่อโปรเจกต์', 'ပရောဂျက် အမည် ထည့်ပါ။'],
+    'Edit process': ['แก้ไขขั้นตอน', 'လုပ်ငန်းစဉ် ပြင်ရန်'],
+    'e.g. ME Design': ['เช่น ME Design', 'ဥပမာ - ME Design'],
+    'e.g. 3D Design': ['เช่น 3D Design', 'ဥပမာ - 3D Design'],
+    'Start date': ['วันเริ่ม', 'စတင်ရက်'],
+    'Due date': ['วันกำหนดเสร็จ', 'ပြီးဆုံးရက်'],
+    'Started': ['เริ่มจริง', 'စတင်ခဲ့သည်'],
+    'Finished': ['เสร็จจริง', 'ပြီးဆုံးခဲ့သည်'],
+    'Enter the main process.': ['ใส่ขั้นตอนหลัก', 'အဓိက လုပ်ငန်းစဉ် ထည့်ပါ။'],
+    'Enter the sub process.': ['ใส่ขั้นตอนย่อย', 'လုပ်ငန်းစဉ်ခွဲ ထည့်ပါ။'],
+    'The due date is before the start date.': ['วันกำหนดเสร็จอยู่ก่อนวันเริ่ม', 'ပြီးဆုံးရက်သည် စတင်ရက်ထက် စောနေသည်။'],
+    'The finish date is before the start date.': ['วันเสร็จจริงอยู่ก่อนวันเริ่มจริง', 'ပြီးဆုံးသည့်ရက်သည် စတင်သည့်ရက်ထက် စောနေသည်။'],
+    'Duplicate project': ['ทำสำเนาโปรเจกต์', 'ပရောဂျက် ကူးယူရန်'],
+    'Start a new project from this one. Main processes, sub processes and people in charge are copied. Actual dates are never copied.': ['สร้างโปรเจกต์ใหม่จากโปรเจกต์นี้ ขั้นตอนหลัก ขั้นตอนย่อย และผู้รับผิดชอบจะถูกคัดลอก วันที่จริงจะไม่ถูกคัดลอก', 'ဤပရောဂျက်မှ ပရောဂျက်အသစ် စတင်ပါ။ အဓိက လုပ်ငန်းစဉ်၊ လုပ်ငန်းစဉ်ခွဲနှင့် တာဝန်ခံများကို ကူးယူမည်။ အမှန်တကယ် ရက်စွဲများကို မကူးပါ။'],
+    'New project name': ['ชื่อโปรเจกต์ใหม่', 'ပရောဂျက်အသစ် အမည်'],
+    'Copy plan dates': ['คัดลอกวันที่ตามแผน', 'အစီအစဉ် ရက်စွဲများ ကူးရန်'],
+    'Copy subject images': ['คัดลอกรูปภาพประกอบ', 'အကြောင်းအရာ ပုံများ ကူးရန်'],
+    'Create copy': ['สร้างสำเนา', 'ကူးယူ ဖန်တီးရန်'],
+    'Enter a name for the new project.': ['ใส่ชื่อสำหรับโปรเจกต์ใหม่', 'ပရောဂျက်အသစ်အတွက် အမည် ထည့်ပါ။'],
+    'Rename main process': ['เปลี่ยนชื่อขั้นตอนหลัก', 'အဓိက လုပ်ငန်းစဉ် အမည်ပြောင်းရန်'],
+    'This renames it for every sub process under it. Use the name of another main process to merge the two.': ['จะเปลี่ยนชื่อให้ทุกขั้นตอนย่อยภายใต้ขั้นตอนนี้ ใช้ชื่อของขั้นตอนหลักอื่นเพื่อรวมทั้งสองเข้าด้วยกัน', 'ယင်းအောက်ရှိ လုပ်ငန်းစဉ်ခွဲအားလုံးအတွက် အမည်ပြောင်းမည်။ အခြား အဓိက လုပ်ငန်းစဉ်၏ အမည်ကို သုံးပါက နှစ်ခုကို ပေါင်းစည်းမည်။'],
+    'Enter a name.': ['ใส่ชื่อ', 'အမည် ထည့်ပါ။'],
+    'Edit image': ['แก้ไขรูปภาพ', 'ပုံ ပြင်ရန်'],
+    'Caption': ['คำอธิบายภาพ', 'ပုံစာတန်း'],
+    'e.g. BM3 RH side drawing': ['เช่น แบบด้านขวา BM3', 'ဥပမာ - BM3 ညာဘက် ပုံဆွဲ'],
+    'Move earlier': ['เลื่อนขึ้น', 'ရှေ့သို့ ရွှေ့ရန်'],
+    'Move later': ['เลื่อนลง', 'နောက်သို့ ရွှေ့ရန်'],
+    'Editing unlocked': ['ปลดล็อกการแก้ไขแล้ว', 'ပြင်ဆင်ခွင့် ဖွင့်ပြီးပါပြီ'],
+    'Editing locked': ['ล็อกการแก้ไขแล้ว', 'ပြင်ဆင်ခွင့် သော့ခတ်ပြီးပါပြီ'],
+    'The passcode was not accepted. Unlock editing again.': ['รหัสผ่านไม่ได้รับการยอมรับ กรุณาปลดล็อกการแก้ไขอีกครั้ง', 'လျှို့ဝှက်ကုဒ်ကို လက်မခံပါ။ ပြင်ဆင်ခွင့်ကို ပြန်ဖွင့်ပါ။'],
+    'Could not save. Try again.': ['บันทึกไม่ได้ ลองอีกครั้ง', 'မသိမ်းနိုင်ပါ။ ထပ်ကြိုးစားပါ။'],
+    'Choose an image file.': ['เลือกไฟล์รูปภาพ', 'ပုံဖိုင် ရွေးပါ။'],
+    'Image added': ['เพิ่มรูปภาพแล้ว', 'ပုံ ထည့်ပြီးပါပြီ'],
+    'Could not read that image. Use a JPG or PNG.': ['อ่านรูปภาพนี้ไม่ได้ ใช้ JPG หรือ PNG', 'ထိုပုံကို မဖတ်နိုင်ပါ။ JPG သို့မဟုတ် PNG သုံးပါ။'],
+    'Details saved': ['บันทึกรายละเอียดแล้ว', 'အသေးစိတ် သိမ်းပြီးပါပြီ'],
+    'Project created': ['สร้างโปรเจกต์แล้ว', 'ပရောဂျက် ဖန်တီးပြီးပါပြီ'],
+    'Process saved': ['บันทึกขั้นตอนแล้ว', 'လုပ်ငန်းစဉ် သိမ်းပြီးပါပြီ'],
+    'Process added': ['เพิ่มขั้นตอนแล้ว', 'လုပ်ငန်းစဉ် ထည့်ပြီးပါပြီ'],
+    'Project duplicated': ['ทำสำเนาโปรเจกต์แล้ว', 'ပရောဂျက် ကူးယူပြီးပါပြီ'],
+    'Renamed': ['เปลี่ยนชื่อแล้ว', 'အမည်ပြောင်းပြီးပါပြီ'],
+    'Caption saved': ['บันทึกคำอธิบายภาพแล้ว', 'ပုံစာတန်း သိမ်းပြီးပါပြီ'],
+    'Image deleted': ['ลบรูปภาพแล้ว', 'ပုံ ဖျက်ပြီးပါပြီ'],
+    'Process deleted': ['ลบขั้นตอนแล้ว', 'လုပ်ငန်းစဉ် ဖျက်ပြီးပါပြီ'],
+    'Project deleted': ['ลบโปรเจกต์แล้ว', 'ပရောဂျက် ဖျက်ပြီးပါပြီ'],
+    'Set to not started': ['ตั้งเป็นยังไม่เริ่มแล้ว', 'မစတင်သေးအဖြစ် သတ်မှတ်ပြီး'],
+    'Set to in progress': ['ตั้งเป็นกำลังดำเนินการแล้ว', 'ဆောင်ရွက်နေဆဲအဖြစ် သတ်မှတ်ပြီး'],
+    'Marked done': ['ทำเครื่องหมายเสร็จแล้ว', 'ပြီးစီးအဖြစ် မှတ်ပြီး'],
+    'Standard processes added': ['เพิ่มขั้นตอนมาตรฐานแล้ว', 'စံလုပ်ငန်းစဉ်များ ထည့်ပြီးပါပြီ'],
+    'Started today': ['เริ่มวันนี้แล้ว', 'ယနေ့ စတင်ပြီး'],
+    'Finished today': ['เสร็จวันนี้แล้ว', 'ယနေ့ ပြီးဆုံးပြီး'],
+    'Reopened': ['เปิดใหม่แล้ว', 'ပြန်ဖွင့်ပြီး'],
+    'Request failed': ['คำขอล้มเหลว', 'တောင်းဆိုမှု မအောင်မြင်ပါ'],
+    'How to edit this log': ['วิธีแก้ไขบันทึกนี้', 'ဤမှတ်တမ်းကို ပြင်ဆင်ပုံ'],
+    'Find your way around:': ['การใช้งานเบื้องต้น:', 'အသုံးပြုပုံ အကျဉ်း -'],
+    'Switch between Schedule and Timeline at the top. Use the filters to narrow by client, project, person, process, status or time, and move the calendar with the slider, the buttons or by dragging.': ['สลับระหว่าง ตารางงาน และ ไทม์ไลน์ ที่ด้านบน ใช้ตัวกรองเพื่อจำกัดตามลูกค้า โปรเจกต์ ผู้รับผิดชอบ ขั้นตอน สถานะ หรือเวลา และเลื่อนปฏิทินด้วยแถบเลื่อน ปุ่ม หรือการลาก', 'အပေါ်ဘက်တွင် အလုပ်ဇယားနှင့် အချိန်ကာလ ကြား ပြောင်းပါ။ ဖောက်သည်၊ ပရောဂျက်၊ လူ၊ လုပ်ငန်းစဉ်၊ အခြေအနေ သို့မဟုတ် အချိန်ဖြင့် စစ်ထုတ်ပြီး ပြက္ခဒိန်ကို ရွှေ့ကြိုးဖြင့်၊ ခလုတ်များဖြင့် သို့မဟုတ် ဆွဲ၍ ရွှေ့ပါ။'],
+    'Timeline:': ['ไทม์ไลน์:', 'အချိန်ကာလ -'],
+    'shows every project on one calendar. Open a project to see its main and sub processes.': ['แสดงทุกโปรเจกต์บนปฏิทินเดียว เปิดโปรเจกต์เพื่อดูขั้นตอนหลักและขั้นตอนย่อย', 'ပရောဂျက်အားလုံးကို ပြက္ခဒိန်တစ်ခုတည်းတွင် ပြသည်။ ပရောဂျက်ကို ဖွင့်၍ အဓိက လုပ်ငန်းစဉ်နှင့် လုပ်ငန်းစဉ်ခွဲများကို ကြည့်ပါ။'],
+    'Edit a project:': ['แก้ไขโปรเจกต์:', 'ပရောဂျက် ပြင်ခြင်း -'],
+    'Edit project changes the name, client, PO number and subject notes. Delete project is at the bottom of that window.': ['แก้ไขโปรเจกต์ ใช้เปลี่ยนชื่อ ลูกค้า เลข PO และบันทึกหัวข้องาน ปุ่ม ลบโปรเจกต์ อยู่ด้านล่างของหน้าต่างนั้น', 'ပရောဂျက် ပြင်ရန် ဖြင့် အမည်၊ ဖောက်သည်၊ PO နံပါတ်နှင့် မှတ်စုများကို ပြောင်းနိုင်သည်။ ပရောဂျက် ဖျက်ရန် သည် ထိုဝင်းဒိုး၏ အောက်ခြေတွင် ရှိသည်။'],
+    'Add a new project:': ['เพิ่มโปรเจกต์ใหม่:', 'ပရောဂျက်အသစ် ထည့်ခြင်း -'],
+    "New project at the top. Duplicate copies the current project's processes and people in charge as a starting point, without actual dates.": ['โปรเจกต์ใหม่ อยู่ด้านบน ทำสำเนา จะคัดลอกขั้นตอนและผู้รับผิดชอบของโปรเจกต์ปัจจุบันเป็นจุดเริ่มต้น โดยไม่คัดลอกวันที่จริง', 'ပရောဂျက်အသစ် သည် အပေါ်ဘက်တွင် ရှိသည်။ ကူးယူရန် သည် လက်ရှိပရောဂျက်၏ လုပ်ငန်းစဉ်များနှင့် တာဝန်ခံများကို အမှန်တကယ်ရက်စွဲမပါဘဲ အစအဖြစ် ကူးပေးသည်။'],
+    'Subject images:': ['รูปภาพประกอบ:', 'အကြောင်းအရာ ပုံများ -'],
+    'Add images uploads photos or drawings. Edit on an image changes its caption or order, or deletes it.': ['เพิ่มรูปภาพ ใช้อัปโหลดรูปถ่ายหรือแบบ ปุ่ม แก้ไข บนรูปใช้เปลี่ยนคำอธิบาย ลำดับ หรือลบรูป', 'ပုံများ ထည့်ရန် ဖြင့် ဓာတ်ပုံ သို့မဟုတ် ပုံဆွဲများ တင်နိုင်သည်။ ပုံပေါ်ရှိ ပြင်ရန် ဖြင့် စာတန်း၊ အစီအစဉ်ကို ပြောင်းနိုင်သည် သို့မဟုတ် ဖျက်နိုင်သည်။'],
+    'Processes:': ['ขั้นตอน:', 'လုပ်ငန်းစဉ်များ -'],
+    'click a process name to edit it or delete it. The arrows move it up or down within its main process. Rename changes a main process name, and + Add adds a sub process to it.': ['คลิกชื่อขั้นตอนเพื่อแก้ไขหรือลบ ลูกศรใช้เลื่อนขึ้นลงภายในขั้นตอนหลัก เปลี่ยนชื่อ ใช้เปลี่ยนชื่อขั้นตอนหลัก และ + เพิ่ม ใช้เพิ่มขั้นตอนย่อย', 'လုပ်ငန်းစဉ်အမည်ကို နှိပ်၍ ပြင်နိုင်သည် သို့မဟုတ် ဖျက်နိုင်သည်။ မြှားများဖြင့် အဓိက လုပ်ငန်းစဉ်အတွင်း အပေါ်အောက် ရွှေ့နိုင်သည်။ အမည်ပြောင်း ဖြင့် အဓိက လုပ်ငန်းစဉ် အမည်ကို ပြောင်းနိုင်ပြီး + ထည့် ဖြင့် လုပ်ငန်းစဉ်ခွဲ ထည့်နိုင်သည်။'],
+    'Logging progress:': ['บันทึกความคืบหน้า:', 'တိုးတက်မှု မှတ်တမ်းတင်ခြင်း -'],
+    'use the status dropdown on each process (Not started, In progress, Done). It fills in the actual dates for you, and you can still change them by clicking the process name. Overdue is automatic: it shows when the due date has passed and the process is not done.': ['ใช้เมนูสถานะของแต่ละขั้นตอน (ยังไม่เริ่ม กำลังดำเนินการ เสร็จแล้ว) ระบบจะใส่วันที่จริงให้ และยังแก้ไขได้โดยคลิกชื่อขั้นตอน สถานะ เกินกำหนด เป็นอัตโนมัติ: จะแสดงเมื่อเลยวันกำหนดเสร็จและขั้นตอนยังไม่เสร็จ', 'လုပ်ငန်းစဉ်တစ်ခုချင်းစီရှိ အခြေအနေ ရွေးချယ်စရာကို သုံးပါ (မစတင်သေး၊ ဆောင်ရွက်နေဆဲ၊ ပြီးစီး)။ အမှန်တကယ်ရက်စွဲများကို အလိုအလျောက် ဖြည့်ပေးပြီး လုပ်ငန်းစဉ်အမည်ကို နှိပ်၍ ပြောင်းနိုင်သေးသည်။ နောက်ကျနေသည် သည် အလိုအလျောက်ဖြစ်သည် - သတ်မှတ်ရက် ကျော်ပြီး မပြီးသေးလျှင် ပြသည်။']
+  };
+
+  /* texts with numbers or names in them: [pattern, function(match, language) -> text] */
+  var RULES = [
+    [/^(\d+) of (\d+) done(?: · (\d+) overdue)?$/, function(m, l){ return l === 'th' ? 'เสร็จ ' + m[1] + ' จาก ' + m[2] + (m[3] ? ' · เกินกำหนด ' + m[3] : '') : m[2] + ' ခုအနက် ' + m[1] + ' ခု ပြီး' + (m[3] ? ' · နောက်ကျ ' + m[3] : ''); }],
+    [/^(\d+) of (\d+) processes$/, function(m, l){ return l === 'th' ? m[1] + ' จาก ' + m[2] + ' ขั้นตอน' : 'လုပ်ငန်းစဉ် ' + m[2] + ' ခုအနက် ' + m[1] + ' ခု'; }],
+    [/^(\d+) in progress$/, function(m, l){ return (l === 'th' ? 'กำลังดำเนินการ ' : 'ဆောင်ရွက်နေဆဲ ') + m[1]; }],
+    [/^(\d+) overdue$/, function(m, l){ return (l === 'th' ? 'เกินกำหนด ' : 'နောက်ကျ ') + m[1]; }],
+    [/^(\d+) not started$/, function(m, l){ return (l === 'th' ? 'ยังไม่เริ่ม ' : 'မစတင်သေး ') + m[1]; }],
+    [/^All projects \((\d+)\)$/, function(m, l){ return (l === 'th' ? 'ทุกโปรเจกต์ (' : 'ပရောဂျက် အားလုံး (') + m[1] + ')'; }],
+    [/^(\d+) images?$/, function(m, l){ return l === 'th' ? m[1] + ' รูป' : 'ပုံ ' + m[1] + ' ပုံ'; }],
+    [/^(\d+) sub processes?$/, function(m, l){ return l === 'th' ? m[1] + ' ขั้นตอนย่อย' : 'လုပ်ငန်းစဉ်ခွဲ ' + m[1] + ' ခု'; }],
+    [/^Today, (.*)$/, function(m, l){ return (l === 'th' ? 'วันนี้ ' : 'ယနေ့ ') + m[1]; }],
+    [/^(\d+)d late$/, function(m, l){ return l === 'th' ? 'ช้า ' + m[1] + ' วัน' : m[1] + ' ရက် နောက်ကျ'; }],
+    [/^due (.*)$/, function(m, l){ return (l === 'th' ? 'ครบกำหนด ' : 'ပြီးရန် ') + m[1]; }],
+    [/^Plan: (.*)$/, function(m, l){ return (l === 'th' ? 'แผน: ' : 'အစီအစဉ် - ') + m[1]; }],
+    [/^Actual: (.*)$/, function(m, l){ return (l === 'th' ? 'จริง: ' : 'အမှန်တကယ် - ') + m[1]; }],
+    [/^(.*) plan: (.*)$/, function(m, l){ return m[1] + (l === 'th' ? ' แผน: ' : ' အစီအစဉ် - ') + m[2]; }],
+    [/^(.*) actual: (.*)$/, function(m, l){ return m[1] + (l === 'th' ? ' จริง: ' : ' အမှန်တကယ် - ') + m[2]; }],
+    [/^Rename (.*)$/, function(m, l){ return l === 'th' ? 'เปลี่ยนชื่อ ' + m[1] : m[1] + ' အမည်ပြောင်းရန်'; }],
+    [/^Add process to (.*)$/, function(m, l){ return l === 'th' ? 'เพิ่มขั้นตอนใน ' + m[1] : m[1] + ' တွင် လုပ်ငန်းစဉ် ထည့်ရန်'; }],
+    [/^Move (.*) up$/, function(m, l){ return l === 'th' ? 'เลื่อน ' + m[1] + ' ขึ้น' : m[1] + ' ကို အပေါ်သို့ ရွှေ့ရန်'; }],
+    [/^Move (.*) down$/, function(m, l){ return l === 'th' ? 'เลื่อน ' + m[1] + ' ลง' : m[1] + ' ကို အောက်သို့ ရွှေ့ရန်'; }],
+    [/^Set status for (.*)$/, function(m, l){ return l === 'th' ? 'ตั้งสถานะของ ' + m[1] : m[1] + ' အခြေအနေ သတ်မှတ်ရန်'; }],
+    [/^(Hide|Show) details of (.*)$/, function(m, l){ return l === 'th' ? (m[1] === 'Hide' ? 'ซ่อน' : 'แสดง') + 'รายละเอียดของ ' + m[2] : m[2] + ' အသေးစိတ် ' + (m[1] === 'Hide' ? 'ဖျောက်ရန်' : 'ပြရန်'); }],
+    [/^View image: (.*)$/, function(m, l){ return (l === 'th' ? 'ดูรูปภาพ: ' : 'ပုံကြည့်ရန် - ') + m[1]; }],
+    [/^Only (\d+) more fit\. Adding the first (\d+)\.$/, function(m, l){ return l === 'th' ? 'ใส่ได้อีกเพียง ' + m[1] + ' รูป กำลังเพิ่ม ' + m[2] + ' รูปแรก' : 'နောက်ထပ် ' + m[1] + ' ပုံသာ ဝင်နိုင်သည်။ ပထမ ' + m[2] + ' ပုံကို ထည့်နေသည်။'; }],
+    [/^Uploading (\d+) images?…$/, function(m, l){ return l === 'th' ? 'กำลังอัปโหลด ' + m[1] + ' รูป…' : 'ပုံ ' + m[1] + ' ပုံ တင်နေသည်…'; }],
+    [/^(\d+) images added$/, function(m, l){ return l === 'th' ? 'เพิ่ม ' + m[1] + ' รูปแล้ว' : 'ပုံ ' + m[1] + ' ပုံ ထည့်ပြီးပါပြီ'; }],
+    [/^Edit (.*)$/, function(m, l){ return l === 'th' ? 'แก้ไข ' + m[1] : m[1] + ' ကို ပြင်ရန်'; }]
+  ];
+
+  function tr(s){
+    if(lang === 'en' || !s) return s;
+    var i = lang === 'th' ? 0 : 1, d = DICT[s];
+    if(d) return d[i];
+    for(var k = 0; k < RULES.length; k++){
+      var m = s.match(RULES[k][0]);
+      if(m) return RULES[k][1](m, lang).replace(' – ongoing', ' – ' + DICT['ongoing'][i]);
+    }
+    return s;
+  }
+  var TR_SKIP = '.pname,.gname,.pj-name,figcaption,.lb-cap,textarea,.notes-box p:not(.sub-empty),script,style';
+  function trText(n){
+    var p = n.parentNode;
+    if(!p || (p.closest && p.closest(TR_SKIP))) return;
+    var s = n.nodeValue, t = s.trim();
+    if(!t) return;
+    var r = tr(t);
+    if(r !== t) n.nodeValue = s.replace(t, r);
+  }
+  function trAttrs(el){
+    ['placeholder', 'aria-label', 'title', 'alt'].forEach(function(a){
+      if(!el.hasAttribute(a)) return;
+      if(el.closest && el.closest('.pname') && a === 'alt') return;
+      var v = el.getAttribute(a), r = tr(v);
+      if(r !== v) el.setAttribute(a, r);
+    });
+  }
+  function trTree(root){
+    if(lang === 'en' || !root) return;
+    if(root.nodeType === 3){ trText(root); return; }
+    if(root.nodeType !== 1) return;
+    trAttrs(root);
+    var els = root.querySelectorAll('[placeholder],[aria-label],[title],[alt]');
+    for(var i = 0; i < els.length; i++) trAttrs(els[i]);
+    var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null), nodes = [];
+    while(w.nextNode()) nodes.push(w.currentNode);
+    nodes.forEach(trText);
+  }
+  var trObs = new MutationObserver(function(muts){
+    if(lang === 'en') return;
+    trObs.disconnect();
+    muts.forEach(function(m){ for(var i = 0; i < m.addedNodes.length; i++) trTree(m.addedNodes[i]); });
+    trWatch();
+  });
+  function trWatch(){ [appEl, modalEl, toastEl].forEach(function(e){ trObs.observe(e, { childList: true, subtree: true }); }); }
+  function setLang(l){
+    lang = LANGS.indexOf(l) >= 0 ? l : 'en';
+    lsSet('projectlog.lang', lang);
+    MONTHS = MONTHS_L[lang]; WD = WD_L[lang];
+    document.documentElement.lang = lang;
+    document.title = tr('Project Log') + ' · Automan Intertrade';
+  }
+  setLang(lang);
+  trWatch();
+  trTree(appEl);
 
   /* ---------- API ---------- */
   function api(method, path, body, keyOverride){
@@ -658,6 +980,7 @@ tr.tl.l2 td.c-proc .tl-tg{display:none}
       });
       topBar += '<label class="switch"><span class="sr">Project</span><select id="projectSelect">' + opts + '</select></label>';
     }
+    topBar += '<label class="lang"><span class="sr">Language</span><select id="langSel"><option value="en"' + (lang === 'en' ? ' selected' : '') + '>English</option><option value="th"' + (lang === 'th' ? ' selected' : '') + '>ไทย</option><option value="my"' + (lang === 'my' ? ' selected' : '') + '>မြန်မာ</option></select></label>';
     if(canEdit){
       topBar += '<button class="btn primary" data-act="new-project">New project</button>' +
         '<button class="btn editing" data-act="lock" title="Turn editing off on this device">Editing on · Lock</button>';
@@ -746,6 +1069,7 @@ tr.tl.l2 td.c-proc .tl-tg{display:none}
       else { w2.scrollLeft = sl; w2.scrollTop = st; }
       syncSlider();
     }
+    trTree(appEl);
     if(fid){
       var f2 = document.getElementById(fid);
       if(f2){ f2.focus(); try { f2.setSelectionRange(fs, fe); } catch(x){} }
@@ -1059,7 +1383,8 @@ tr.tl.l2 td.c-proc .tl-tg{display:none}
 
   function helpHTML(){
     return '<details class="help"><summary>How to edit this log</summary><ul>' +
-      '<li><b>Find your way around:</b> choose All projects at the top to see every job together. Use the filters to narrow by client, person, process, status or time. Move the calendar with the slider, the week and month buttons, or by dragging it.</li>' +
+      '<li><b>Find your way around:</b> Switch between Schedule and Timeline at the top. Use the filters to narrow by client, project, person, process, status or time, and move the calendar with the slider, the buttons or by dragging.</li>' +
+      '<li><b>Timeline:</b> shows every project on one calendar. Open a project to see its main and sub processes.</li>' +
       '<li><b>Edit a project:</b> Edit project changes the name, client, PO number and subject notes. Delete project is at the bottom of that window.</li>' +
       '<li><b>Add a new project:</b> New project at the top. Duplicate copies the current project\'s processes and people in charge as a starting point, without actual dates.</li>' +
       '<li><b>Subject images:</b> Add images uploads photos or drawings. Edit on an image changes its caption or order, or deletes it.</li>' +
@@ -1323,7 +1648,8 @@ tr.tl.l2 td.c-proc .tl-tg{display:none}
   });
   document.addEventListener('change', function(e){
     var tid = e.target.id || '';
-    if(tid === 'projectSelect') selectProject(e.target.value);
+    if(tid === 'langSel'){ setLang(e.target.value); render(); }
+    else if(tid === 'projectSelect') selectProject(e.target.value);
     else if(/^flt-/.test(tid) && tid !== 'flt-q'){
       var k = tid.slice(4);
       filters[k] = e.target.value;
