@@ -301,6 +301,7 @@ input[type=date]{min-height:38px;max-width:100%}
   .pname{padding:4px 0}
 }
 @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+.period-note{margin:0;color:var(--muted);padding:10px 14px;background:var(--surface);border:1px dashed var(--line);border-radius:8px}
 </style>
 </head>
 <body>
@@ -443,8 +444,8 @@ input[type=date]{min-height:38px;max-width:100%}
       if(as != null && ae == null) see(Math.max(as, TODAY));
     });
     if(min === Infinity){ min = TODAY - 2; max = TODAY + 18; }
-    if(TODAY > max && TODAY - max <= 14) max = TODAY;
-    if(TODAY < min && min - TODAY <= 14) min = TODAY;
+    if(TODAY > max && TODAY - max <= 60) max = TODAY;
+    if(TODAY < min && min - TODAY <= 60) min = TODAY;
     min -= 1; max += 2;
     if(max - min < 20) max = min + 20;
     return [min, max];
@@ -704,6 +705,9 @@ input[type=date]{min-height:38px;max-width:100%}
         (canEdit && !isAll
           ? '<p>Start from the standard set (ME design, EE design, parts order, automation) or add your own processes one by one.</p><div class="row"><button class="btn primary" data-act="load-template">Load standard processes</button><button class="btn" data-act="add-task" data-group="">Add process</button></div>'
           : '<p>No processes have been added yet.</p>') + '</div></div>';
+    } else if(!list.length && windowOf()){
+      html += '<p class="period-note">No processes fall in this period. The calendar below shows it empty; change the time filter or press Reset filters.</p>' +
+        calNavHTML() + '<div class="sched-wrap" tabindex="0" aria-label="Schedule calendar" style="--dw:' + DW + 'px">' + tableHTML(list, isAll) + '</div>';
     } else if(!list.length){
       html += '<div class="sched-wrap"><div class="empty"><h2>Nothing matches these filters</h2><p>Try a wider time range or clear a filter.</p><div class="row"><button class="btn primary" data-act="reset-filters">Reset filters</button></div></div></div>';
     } else {
@@ -1277,8 +1281,8 @@ input[type=date]{min-height:38px;max-width:100%}
   document.addEventListener('mouseup', function(){ if(drag){ drag.w.classList.remove('dragging'); drag = null; } });
 
   /* live refresh: poll while the tab is visible */
-  setInterval(function(){ if(document.visibilityState === 'visible' && !modalState) load(false); }, POLL_MS);
-  document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'visible') load(false); });
+  setInterval(function(){ if(document.visibilityState === 'visible' && !modalState){ if(todayN() !== TODAY && projectsLoaded) render(); load(false); } }, POLL_MS);
+  document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'visible'){ if(todayN() !== TODAY && projectsLoaded) render(); load(false); } });
 
   /* ---------- boot ---------- */
   render();
