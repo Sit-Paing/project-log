@@ -591,7 +591,10 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     'Started today': ['เริ่มวันนี้แล้ว', 'ယနေ့ စတင်ပြီး'],
     'Finished today': ['เสร็จวันนี้แล้ว', 'ယနေ့ ပြီးဆုံးပြီး'],
     'Reopened': ['เปิดใหม่แล้ว', 'ပြန်ဖွင့်ပြီး'],
-    'Export to Excel': ['ส่งออก Excel', 'Excel သို့ ထုတ်ရန်'],
+    'Export this view': ['ส่งออกมุมมองนี้', 'ဤမြင်ကွင်းကို ထုတ်ရန်'],
+    'Export all projects': ['ส่งออกทุกโปรเจกต์', 'ပရောဂျက်အားလုံး ထုတ်ရန်'],
+    'Only what is shown now, with the filters applied': ['เฉพาะสิ่งที่แสดงอยู่ตามตัวกรอง', 'ယခုပြထားသည့်အရာကိုသာ၊ စစ်ထုတ်မှုများ အသုံးချပြီး'],
+    'Every project, ignoring the filters': ['ทุกโปรเจกต์ โดยไม่สนใจตัวกรอง', 'ပရောဂျက်အားလုံး၊ စစ်ထုတ်မှုများကို လျစ်လျူရှု၍'],
     'Preparing Excel file…': ['กำลังสร้างไฟล์ Excel…', 'Excel ဖိုင် ပြင်ဆင်နေသည်…'],
     'Excel file downloaded': ['ดาวน์โหลดไฟล์ Excel แล้ว', 'Excel ဖိုင် ဒေါင်းလုဒ်ပြီးပါပြီ'],
     'Could not create the Excel file. Check your connection and try again.': ['สร้างไฟล์ Excel ไม่ได้ ตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง', 'Excel ဖိုင် မဖန်တီးနိုင်ပါ။ ချိတ်ဆက်မှုကို စစ်ပြီး ထပ်ကြိုးစားပါ။'],
@@ -911,7 +914,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
       h += '<div class="fl"><label for="flt-from">From</label><input id="flt-from" type="date" value="' + esc(filters.from) + '"></div>' +
         '<div class="fl"><label for="flt-to">To</label><input id="flt-to" type="date" value="' + esc(filters.to) + '"></div>';
     }
-    h += '<div class="f-count mono">' + shown + ' of ' + total + ' processes</div><button class="btn" data-act="export-xlsx">Export to Excel</button>';
+    h += '<div class="f-count mono">' + shown + ' of ' + total + ' processes</div><button class="btn" data-act="export-xlsx" data-scope="view" title="Only what is shown now, with the filters applied">Export this view</button><button class="btn" data-act="export-xlsx" data-scope="all" title="Every project, ignoring the filters">Export all projects</button>';
     if(filtersActive()) h += '<button class="btn" data-act="reset-filters">Reset filters</button>';
     return h + '</section>';
   }
@@ -1171,9 +1174,9 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
   }
   function xlDate(n){ return n == null ? null : new Date(n * MS); }
   function xlFill(argb){ return { type: 'pattern', pattern: 'solid', fgColor: { argb: argb } }; }
-  function exportExcel(){
+  function exportExcel(everything){
     var wide = selectedId === ALL || view === 'timeline';
-    var list = filterTasks(wide ? allTasks : tasks);
+    var list = everything ? allTasks.slice() : filterTasks(wide ? allTasks : tasks);
     if(!list.length){ toast('Nothing to export. Change the filters first.', true); return; }
     toast('Preparing Excel file…');
     var rows = [];
@@ -1208,7 +1211,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
       ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 12 } };
 
       /* sheet 2: plan and actual bars over the calendar, like the paper schedule */
-      var rg = calRange(list), r0 = rg[0], r1 = Math.min(rg[1], rg[0] + 400), N = r1 - r0 + 1, LEAD = 7;
+      var rg = everything ? rangeOf(list) : calRange(list), r0 = rg[0], r1 = Math.min(rg[1], rg[0] + 730), N = r1 - r0 + 1, LEAD = 7;
       var tl = wb.addWorksheet(tr('Timeline'), { views: [{ state: 'frozen', xSplit: LEAD, ySplit: 3 }] });
       var widths = [30, 20, 24, 16, 9, 12, 12];
       for(var c = 1; c <= LEAD; c++) tl.getColumn(c).width = widths[c - 1];
@@ -1255,6 +1258,8 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
         [a, b].forEach(function(row){ row.getCell(6).numFmt = 'd mmm'; row.getCell(7).numFmt = 'd mmm'; row.getCell(6).alignment = { horizontal: 'left' }; row.getCell(7).alignment = { horizontal: 'left' }; });
         bars(a, pS, pE, 'FF2C7A4B'); bars(b, as, aE, 'FFE6A92B');
       });
+      tl.orderNo = 0; ws.orderNo = 1;   /* Timeline first, Processes second */
+      wb.views = [{ activeTab: 0 }];
       return wb.xlsx.writeBuffer();
     }).then(function(buf){
       var blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -1714,7 +1719,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
       });
       lsSet('projectlog.tl2', JSON.stringify(tlOpen)); render(); return;
     }
-    if(act === 'export-xlsx'){ exportExcel(); return; }
+    if(act === 'export-xlsx'){ exportExcel(el.dataset.scope === 'all'); return; }
     if(act === 'cal-today'){ var tw = appEl.querySelector('.sched-wrap'); if(tw) scrollToToday(tw, true); return; }
     if(act === 'reset-filters'){ filters = { q: '', client: '', project: '', who: '', group: '', status: '', time: '', from: '', to: '' }; needScroll = true; render(); return; }
     if(act === 'open-project'){ selectProject(el.dataset.id); window.scrollTo(0, 0); return; }
