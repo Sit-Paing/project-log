@@ -101,6 +101,19 @@ button,input,select{font:inherit;color:inherit}
 .pill.progress{background:var(--prog-wash);color:var(--actual-text)}
 .pill.late{background:var(--danger-wash);color:var(--danger)}
 .pill.todo{background:var(--todo-wash);color:var(--muted)}
+.ph-title{display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;margin:0 0 8px}
+.ph-title h1{margin:0}
+.ph-title .pill{font-size:12.5px;padding:3px 11px}
+.mp-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:4px 2px 10px}
+.mp-bar label{display:inline-flex;align-items:center;gap:8px;font-weight:600;cursor:pointer}
+.mp-bar .mp-n{margin-left:auto;color:var(--muted);font-size:12.5px}
+.mp-list{max-height:46vh;overflow:auto;border-top:1px solid var(--line-soft)}
+.mp-row{display:flex;align-items:center;gap:12px;padding:10px 2px;border-bottom:1px solid var(--line-soft)}
+.mp-row input[type=checkbox],.mp-bar input[type=checkbox]{width:20px;height:20px;flex:none;accent-color:var(--plan)}
+.mp-info{flex:1;min-width:0}
+.mp-info b{display:block;overflow-wrap:anywhere}
+.mp-info .sub{display:block;color:var(--muted);font-size:12px;overflow-wrap:anywhere}
+.hint-sm{color:var(--muted);font-size:12px;max-width:60%}
 
 /* toolbar */
 .bar-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
@@ -366,7 +379,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
   var ALL = '__all__';
   var view = lsGet('projectlog.view') === 'timeline' ? 'timeline' : 'schedule';
   var tlOpen = (function(){ try { return JSON.parse(lsGet('projectlog.tl2') || '{}') || {}; } catch(e){ return {}; } })();
-  var filters = { q: '', client: '', project: '', who: '', group: '', status: '', time: '', from: '', to: '' };
+  var filters = { q: '', client: '', project: '', who: '', group: '', status: '', pstatus: '', time: '', from: '', to: '' };
   var DW = (function(){ var n = parseInt(lsGet('projectlog.dw'), 10); return [20, 28, 40, 56].indexOf(n) >= 0 ? n : 28; })();
 
   var appEl = document.getElementById('app');
@@ -548,6 +561,19 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     'Due date': ['วันกำหนดเสร็จ', 'ပြီးဆုံးရက်'],
     'Started': ['เริ่มจริง', 'စတင်ခဲ့သည်'],
     'Finished': ['เสร็จจริง', 'ပြီးဆုံးခဲ့သည်'],
+    'Manage finished projects lists every finished project. Tick one or several, then press Delete selected and confirm.': ['จัดการโปรเจกต์ที่เสร็จแล้ว แสดงโปรเจกต์ที่เสร็จทั้งหมด ติ๊กเลือกหนึ่งหรือหลายโปรเจกต์ แล้วกด ลบที่เลือก และยืนยัน', 'ပြီးဆုံးသော ပရောဂျက်များ စီမံရန် တွင် ပြီးဆုံးသော ပရောဂျက်အားလုံး ပြထားသည်။ တစ်ခု သို့မဟုတ် အများအပြား ရွေးပြီး ရွေးထားသည်များ ဖျက်ရန် ကိုနှိပ်၍ အတည်ပြုပါ။'],
+    'Delete finished projects:': ['ลบโปรเจกต์ที่เสร็จแล้ว:', 'ပြီးဆုံးသော ပရောဂျက်များ ဖျက်ရန်:'],
+    'Ongoing': ['กำลังดำเนินการ', 'ဆောင်ရွက်နေဆဲ'],
+    'Project status': ['สถานะโปรเจกต์', 'ပရောဂျက် အခြေအနေ'],
+    'Process status': ['สถานะขั้นตอน', 'လုပ်ငန်းစဉ် အခြေအနေ'],
+    'Manage finished projects': ['จัดการโปรเจกต์ที่เสร็จแล้ว', 'ပြီးဆုံးသော ပရောဂျက်များ စီမံရန်'],
+    'Finished projects': ['โปรเจกต์ที่เสร็จแล้ว', 'ပြီးဆုံးသော ပရောဂျက်များ'],
+    'Only finished projects can be deleted. Deleting removes the project with all its processes and photos for good. Use Export all projects first if you want to keep a copy.': ['ลบได้เฉพาะโปรเจกต์ที่เสร็จแล้วเท่านั้น การลบจะนำโปรเจกต์พร้อมขั้นตอนและรูปภาพทั้งหมดออกอย่างถาวร หากต้องการเก็บสำเนา ให้กด ส่งออกทุกโปรเจกต์ ก่อน', 'ပြီးဆုံးသော ပရောဂျက်များကိုသာ ဖျက်နိုင်သည်။ ဖျက်လျှင် ပရောဂျက်နှင့် ၎င်း၏ လုပ်ငန်းစဉ်များ၊ ဓာတ်ပုံများ အားလုံး အပြီးအပိုင် ပျက်သွားမည်။ မိတ္တူ သိမ်းလိုပါက ပရောဂျက်အားလုံး ထုတ်ရန် ကို အရင်နှိပ်ပါ။'],
+    'No finished projects yet.': ['ยังไม่มีโปรเจกต์ที่เสร็จแล้ว', 'ပြီးဆုံးသော ပရောဂျက် မရှိသေးပါ။'],
+    'Select all': ['เลือกทั้งหมด', 'အားလုံး ရွေးရန်'],
+    'Delete selected': ['ลบที่เลือก', 'ရွေးထားသည်များ ဖျက်ရန်'],
+    'A project can be deleted once it is finished.': ['ลบโปรเจกต์ได้เมื่อโปรเจกต์เสร็จแล้ว', 'ပရောဂျက် ပြီးဆုံးမှ ဖျက်နိုင်မည်။'],
+    'No client': ['ไม่มีลูกค้า', 'ဝယ်ယူသူ မရှိ'],
     'Enter the main process.': ['ใส่ขั้นตอนหลัก', 'အဓိက လုပ်ငန်းစဉ် ထည့်ပါ။'],
     'Enter the sub process.': ['ใส่ขั้นตอนย่อย', 'လုပ်ငန်းစဉ်ခွဲ ထည့်ပါ။'],
     'The due date is before the start date.': ['วันกำหนดเสร็จอยู่ก่อนวันเริ่ม', 'ပြီးဆုံးရက်သည် စတင်ရက်ထက် စောနေသည်။'],
@@ -608,7 +634,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     'Timeline:': ['ไทม์ไลน์:', 'အချိန်ကာလ -'],
     'shows every project on one calendar. Open a project to see its main and sub processes.': ['แสดงทุกโปรเจกต์บนปฏิทินเดียว เปิดโปรเจกต์เพื่อดูขั้นตอนหลักและขั้นตอนย่อย', 'ပရောဂျက်အားလုံးကို ပြက္ခဒိန်တစ်ခုတည်းတွင် ပြသည်။ ပရောဂျက်ကို ဖွင့်၍ အဓိက လုပ်ငန်းစဉ်နှင့် လုပ်ငန်းစဉ်ခွဲများကို ကြည့်ပါ။'],
     'Edit a project:': ['แก้ไขโปรเจกต์:', 'ပရောဂျက် ပြင်ခြင်း -'],
-    'Edit project changes the name, client, PO number and subject notes. Delete project is at the bottom of that window.': ['แก้ไขโปรเจกต์ ใช้เปลี่ยนชื่อ ลูกค้า เลข PO และบันทึกหัวข้องาน ปุ่ม ลบโปรเจกต์ อยู่ด้านล่างของหน้าต่างนั้น', 'ပရောဂျက် ပြင်ရန် ဖြင့် အမည်၊ ဖောက်သည်၊ PO နံပါတ်နှင့် မှတ်စုများကို ပြောင်းနိုင်သည်။ ပရောဂျက် ဖျက်ရန် သည် ထိုဝင်းဒိုး၏ အောက်ခြေတွင် ရှိသည်။'],
+    'Edit project changes the name, client, PO number and subject notes. Delete project appears at the bottom of that window once the project is finished.': ['แก้ไขโปรเจกต์ ใช้เปลี่ยนชื่อ ลูกค้า เลข PO และบันทึกหัวข้องาน ปุ่ม ลบโปรเจกต์ จะอยู่ด้านล่างของหน้าต่างนั้นเมื่อโปรเจกต์เสร็จแล้ว', 'ပရောဂျက် ပြင်ရန် ဖြင့် အမည်၊ ဖောက်သည်၊ PO နံပါတ်နှင့် မှတ်စုများကို ပြောင်းနိုင်သည်။ ပရောဂျက် ပြီးဆုံးပြီးလျှင် ပရောဂျက် ဖျက်ရန် သည် ထိုဝင်းဒိုး၏ အောက်ခြေတွင် ပေါ်လာမည်။'],
     'Add a new project:': ['เพิ่มโปรเจกต์ใหม่:', 'ပရောဂျက်အသစ် ထည့်ခြင်း -'],
     "New project at the top. Duplicate copies the current project's processes and people in charge as a starting point, without actual dates.": ['โปรเจกต์ใหม่ อยู่ด้านบน ทำสำเนา จะคัดลอกขั้นตอนและผู้รับผิดชอบของโปรเจกต์ปัจจุบันเป็นจุดเริ่มต้น โดยไม่คัดลอกวันที่จริง', 'ပရောဂျက်အသစ် သည် အပေါ်ဘက်တွင် ရှိသည်။ ကူးယူရန် သည် လက်ရှိပရောဂျက်၏ လုပ်ငန်းစဉ်များနှင့် တာဝန်ခံများကို အမှန်တကယ်ရက်စွဲမပါဘဲ အစအဖြစ် ကူးပေးသည်။'],
     'Subject images:': ['รูปภาพประกอบ:', 'အကြောင်းအရာ ပုံများ -'],
@@ -621,6 +647,11 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
 
   /* texts with numbers or names in them: [pattern, function(match, language) -> text] */
   var RULES = [
+    [/^(\d+) selected$/, function(m, l){ return l === 'th' ? 'เลือกแล้ว ' + m[1] : 'ရွေးထားသည် ' + m[1]; }],
+    [/^(\d+) projects deleted$/, function(m, l){ return l === 'th' ? 'ลบ ' + m[1] + ' โปรเจกต์แล้ว' : 'ပရောဂျက် ' + m[1] + ' ခု ဖျက်ပြီးပါပြီ'; }],
+    [/^(\d+) process(?:es)?$/, function(m, l){ return l === 'th' ? m[1] + ' ขั้นตอน' : 'လုပ်ငန်းစဉ် ' + m[1] + ' ခု'; }],
+    [/^(\d+) photos?$/, function(m, l){ return l === 'th' ? m[1] + ' รูป' : 'ဓာတ်ပုံ ' + m[1] + ' ပုံ'; }],
+    [/^Select (.*)$/, function(m, l){ return l === 'th' ? 'เลือก ' + m[1] : m[1] + ' ကို ရွေးရန်'; }],
     [/^(\d+) of (\d+) done(?: · (\d+) overdue)?$/, function(m, l){ return l === 'th' ? 'เสร็จ ' + m[1] + ' จาก ' + m[2] + (m[3] ? ' · เกินกำหนด ' + m[3] : '') : m[2] + ' ခုအနက် ' + m[1] + ' ခု ပြီး' + (m[3] ? ' · နောက်ကျ ' + m[3] : ''); }],
     [/^(\d+) of (\d+) processes$/, function(m, l){ return l === 'th' ? m[1] + ' จาก ' + m[2] + ' ขั้นตอน' : 'လုပ်ငန်းစဉ် ' + m[2] + ' ခုအနက် ' + m[1] + ' ခု'; }],
     [/^(\d+) in progress$/, function(m, l){ return (l === 'th' ? 'กำลังดำเนินการ ' : 'ဆောင်ရွက်နေဆဲ ') + m[1]; }],
@@ -659,7 +690,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     }
     return s;
   }
-  var TR_SKIP = '.pname,.gname,.pj-name,figcaption,.lb-cap,textarea,.notes-box p:not(.sub-empty),script,style';
+  var TR_SKIP = '.mp-u,.pname,.gname,.pj-name,figcaption,.lb-cap,textarea,.notes-box p:not(.sub-empty),script,style';
   function trText(n){
     var p = n.parentNode;
     if(!p || (p.closest && p.closest(TR_SKIP))) return;
@@ -810,6 +841,16 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     }
   }
   function projTasks(pid){ return allTasks.filter(function(t){ return t.projectId === pid; }); }
+  /* overall project status, worked out from its processes: finished when every process is done */
+  var PSTATUS_LABEL = { todo: 'Not started', progress: 'Ongoing', done: 'Finished' };
+  var PSTATUS_OPTS = [['', 'Any status'], ['todo', 'Not started'], ['progress', 'Ongoing'], ['done', 'Finished']];
+  function projStatus(pid){
+    var ts = projTasks(pid);
+    if(!ts.length) return 'todo';
+    if(ts.every(function(t){ return !!t.actEnd; })) return 'done';
+    return ts.some(function(t){ return !!(t.actStart || t.actEnd); }) ? 'progress' : 'todo';
+  }
+  function projPill(pid){ var k = projStatus(pid); return '<span class="pill ' + k + '"><i></i>' + PSTATUS_LABEL[k] + '</span>'; }
 
   function logoHTML(){
     return '<img class="logo" src="/logo.png" alt="Automan Intertrade Co., Ltd."><span class="appname">Project Log</span>';
@@ -852,7 +893,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     return null;
   }
   function filtersActive(){
-    return !!(filters.q || filters.client || filters.project || filters.who || filters.group || filters.status || filters.time);
+    return !!(filters.q || filters.client || filters.project || filters.who || filters.group || filters.status || filters.pstatus || filters.time);
   }
   function filterTasks(list){
     var q = filters.q.trim().toLowerCase(), w = windowOf(), pm = {};
@@ -863,6 +904,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
       if(filters.project && t.projectId !== filters.project) return false;
       if(filters.who && (t.incharge || '') !== filters.who) return false;
       if(filters.group && t.group !== filters.group) return false;
+      if(filters.pstatus && projStatus(t.projectId) !== filters.pstatus) return false;
       if(filters.status){
         var s = statusOf(t);
         if(filters.status === 'open'){ if(s === 'done') return false; }
@@ -908,7 +950,8 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
       (isAll ? selHTML('flt-project', 'Project', '<option value="">All projects</option>' + projects.filter(function(x){ return !filters.client || (x.client || '') === filters.client; }).map(function(x){ return '<option value="' + esc(x.id) + '"' + (x.id === filters.project ? ' selected' : '') + '>' + esc(x.name || 'Untitled') + '</option>'; }).join('')) : '') +
       selHTML('flt-who', 'In charge', optHTML(lists.whos, filters.who, 'Everyone')) +
       selHTML('flt-group', 'Main process', optHTML(lists.groups, filters.group, 'All processes')) +
-      selHTML('flt-status', 'Status', pairsHTML(STATUS_OPTS, filters.status)) +
+      (isAll ? selHTML('flt-pstatus', 'Project status', pairsHTML(PSTATUS_OPTS, filters.pstatus)) : '') +
+      selHTML('flt-status', 'Process status', pairsHTML(STATUS_OPTS, filters.status)) +
       selHTML('flt-time', 'Time', pairsHTML(TIME_OPTS, filters.time));
     if(filters.time === 'custom'){
       h += '<div class="fl"><label for="flt-from">From</label><input id="flt-from" type="date" value="' + esc(filters.from) + '"></div>' +
@@ -1033,13 +1076,13 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
       html += '<section class="ph"><div class="ph-main"><h1>' + (isTL ? 'Project timeline' : 'All projects') + '</h1>' +
         '<dl class="meta"><div><dt>Projects</dt><dd class="mono">' + Object.keys(pids).length + '</dd></div>' +
         '<div><dt>Clients</dt><dd class="mono">' + Object.keys(cls).length + '</dd></div>' +
-        '<div><dt>Planned</dt><dd class="mono">' + esc(sched) + '</dd></div></dl></div></section>';
+        '<div><dt>Planned</dt><dd class="mono">' + esc(sched) + '</dd></div></dl></div>' + (canEdit ? '<div class="bar-actions"><button class="btn" data-act="manage-projects">Manage finished projects</button></div>' : '') + '</section>';
     } else {
-      html += '<section class="ph"><div class="ph-main"><h1>' + esc(p.name || 'Untitled project') + '</h1>' +
+      html += '<section class="ph"><div class="ph-main"><div class="ph-title"><h1>' + esc(p.name || 'Untitled project') + '</h1>' + projPill(p.id) + '</div>' +
         '<dl class="meta"><div><dt>Client</dt><dd>' + (esc(p.client) || '—') + '</dd></div>' +
         '<div><dt>PO No.</dt><dd class="mono">' + (esc(p.po) || '—') + '</dd></div>' +
         '<div><dt>Planned</dt><dd class="mono">' + esc(sched) + '</dd></div></dl></div>' +
-        (canEdit ? '<div class="bar-actions"><button class="btn" data-act="edit-project">Edit project</button><button class="btn" data-act="duplicate-project">Duplicate</button></div>' : '') + '</section>';
+        (canEdit ? '<div class="bar-actions"><button class="btn" data-act="edit-project">Edit project</button><button class="btn" data-act="duplicate-project">Duplicate</button><button class="btn" data-act="manage-projects">Manage finished projects</button></div>' : '') + '</section>';
     }
 
     html += '<section class="stats" aria-label="Progress"><div class="prog"><span class="prog-label mono">' + counts.done + ' of ' + total + ' done</span>' +
@@ -1118,7 +1161,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     var aeTxt = g.as == null ? '—' : (g.live ? 'ongoing' : fmt(g.ae));
     var note = g.late ? ' · ' + g.late + ' overdue' : '';
     return '<tr class="plan tl l' + e.level + '"><td class="proc c-proc" rowspan="2"><div class="tl-name">' + lead + '<div>' + name + '</div></div></td>' +
-      '<td class="st c-st" rowspan="2"><div class="st-in"><span class="pill ' + g.status + '"><i></i>' + STATUS_LABEL[g.status] + '</span><span class="late-note">' + g.done + ' of ' + g.n + ' done' + note + '</span></div></td>' +
+      '<td class="st c-st" rowspan="2"><div class="st-in">' + (e.level === 0 && e.openId ? projPill(e.openId) : '<span class="pill ' + g.status + '"><i></i>' + STATUS_LABEL[g.status] + '</span>') + '<span class="late-note">' + g.done + ' of ' + g.n + ' done' + note + '</span></div></td>' +
       '<td class="ty plan c-ty">PLAN</td><td class="dt mono c-dt">' + fmt(g.ps) + '</td><td class="dt mono c-dt">' + fmt(g.pd) + '</td>' +
       '<td class="who c-who" rowspan="2">' + who + '</td>' + barCells(r0, r1, g.ps, g.pd, 'plan', false, planTip) + '</tr>' +
       '<tr class="last act tl l' + e.level + '"><td class="ty act c-ty">ACTUAL</td><td class="dt mono c-dt' + (g.as == null ? ' dim' : '') + '">' + fmt(g.as) + '</td><td class="dt mono c-dt' + (g.as == null ? ' dim' : '') + '">' + aeTxt + '</td>' +
@@ -1193,22 +1236,22 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
       /* sheet 1: one line per process */
       var ws = wb.addWorksheet(tr('Processes'), { views: [{ state: 'frozen', ySplit: 1 }] });
       ws.columns = [
-        { header: tr('Project'), width: 30 }, { header: tr('Client'), width: 20 }, { header: tr('PO No.'), width: 12 },
+        { header: tr('Project'), width: 30 }, { header: tr('Client'), width: 20 }, { header: tr('PO No.'), width: 12 }, { header: tr('Project status'), width: 16 },
         { header: tr('Main process'), width: 20 }, { header: tr('Sub process'), width: 24 }, { header: tr('In charge'), width: 16 },
         { header: tr('Plan') + ' – ' + tr('Start'), width: 15 }, { header: tr('Plan') + ' – ' + tr('Due'), width: 15 },
         { header: tr('Actual') + ' – ' + tr('Start'), width: 15 }, { header: tr('Actual') + ' – ' + tr('Finished'), width: 15 },
-        { header: tr('Status'), width: 16 }, { header: tr('Days late'), width: 11 }
+        { header: tr('Process status'), width: 16 }, { header: tr('Days late'), width: 11 }
       ];
       ws.getRow(1).eachCell(function(c){ c.font = HEAD.font; c.fill = HEAD.fill; c.alignment = HEAD.alignment; });
       ws.getRow(1).height = 30;
       rows.forEach(function(r){
         var t = r.t, pd = parse(t.planDue), ae = parse(t.actEnd), st = statusOf(t), late = '';
         if(pd != null){ if(ae != null && ae > pd) late = ae - pd; else if(ae == null && TODAY > pd) late = TODAY - pd; }
-        ws.addRow([r.p.name, r.p.client, r.p.po, t.group, t.name, t.incharge,
+        ws.addRow([r.p.name, r.p.client, r.p.po, tr(PSTATUS_LABEL[projStatus(r.p.id)]), t.group, t.name, t.incharge,
           xlDate(parse(t.planStart)), xlDate(pd), xlDate(parse(t.actStart)), xlDate(ae), tr(STATUS_LABEL[st]), late]);
       });
-      [7, 8, 9, 10].forEach(function(c){ ws.getColumn(c).numFmt = 'dd mmm yyyy'; });
-      ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 12 } };
+      [8, 9, 10, 11].forEach(function(c){ ws.getColumn(c).numFmt = 'dd mmm yyyy'; });
+      ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 13 } };
 
       /* sheet 2: plan and actual bars over the calendar, like the paper schedule */
       var rg = everything ? rangeOf(list) : calRange(list), r0 = rg[0], r1 = Math.min(rg[1], rg[0] + 730), N = r1 - r0 + 1, LEAD = 7;
@@ -1400,9 +1443,47 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
       '<div class="fld full"><label for="f-notes">Subject notes</label><textarea id="f-notes" placeholder="Scope, materials, quantities, remarks">' + esc(p ? p.notes : '') + '</textarea></div>' +
       (p ? '' : '<div class="fld full check"><input id="f-tpl" type="checkbox" checked><label for="f-tpl" style="text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink);font-weight:500">Start with the standard processes (ME design, EE design, parts order, automation)</label></div>') +
       '</div><p class="err" id="formErr" role="alert"></p>' +
-      '<div class="actions">' + (p ? '<button type="button" class="btn danger" data-act="delete-project">Delete project</button>' : '') +
+      '<div class="actions">' + (p ? (projStatus(p.id) === 'done' ? '<button type="button" class="btn danger" data-act="delete-project">Delete project</button>' : '<span class="hint-sm">A project can be deleted once it is finished.</span>') : '') +
       '<div class="r"><button type="button" class="btn" data-act="close-modal">Cancel</button><button type="submit" class="btn primary">' + (p ? 'Save' : 'Create project') + '</button></div></div></form></div>';
     var f = document.getElementById('f-pname'); if(f) f.focus();
+  }
+  function finishedProjects(){ return projects.filter(function(p){ return projStatus(p.id) === 'done'; }); }
+  function openManageModal(){
+    modalState = { type: 'manage', sel: {} };
+    var fin = finishedProjects();
+    var h = '<div class="scrim" data-act="scrim"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">Finished projects</h2>' +
+      '<p class="note">Only finished projects can be deleted. Deleting removes the project with all its processes and photos for good. Use Export all projects first if you want to keep a copy.</p>';
+    if(!fin.length){
+      h += '<p class="sub-empty">No finished projects yet.</p>';
+    } else {
+      h += '<div class="mp-bar"><label><input type="checkbox" id="mp-all"> Select all</label><span class="mp-n mono" id="mp-n">0 selected</span></div><div class="mp-list">';
+      fin.forEach(function(p){
+        var n = projTasks(p.id).length, im = allImages.filter(function(x){ return x.projectId === p.id; }).length;
+        h += '<div class="mp-row"><input type="checkbox" class="mp-chk" data-id="' + esc(p.id) + '" id="mp-' + esc(p.id) + '" aria-label="Select ' + esc(p.name || 'Untitled') + '">' +
+          '<label class="mp-info" for="mp-' + esc(p.id) + '"><b class="mp-u">' + esc(p.name || 'Untitled') + '</b><span class="sub"><span class="mp-u">' + esc(p.client || 'No client') + (p.po ? ' · PO ' + esc(p.po) : '') + '</span> · <span>' + n + (n === 1 ? ' process' : ' processes') + '</span> · <span>' + im + (im === 1 ? ' photo' : ' photos') + '</span></span></label>' +
+          '<button type="button" class="btn danger" data-act="mp-del-one" data-id="' + esc(p.id) + '">Delete</button></div>';
+      });
+      h += '</div>';
+    }
+    h += '<div class="actions"><button type="button" class="btn danger" data-act="mp-del-sel" id="mp-del" disabled>Delete selected</button>' +
+      '<div class="r"><button type="button" class="btn" data-act="close-modal">Close</button></div></div></div></div>';
+    modalEl.innerHTML = h;
+  }
+  function mpSync(){
+    if(!modalState || modalState.type !== 'manage') return;
+    var all = modalEl.querySelectorAll('.mp-chk'), n = 0;
+    Array.prototype.forEach.call(all, function(c){ if(c.checked) n++; modalState.sel[c.dataset.id] = c.checked; });
+    var a = document.getElementById('mp-all'); if(a){ a.checked = n > 0 && n === all.length; a.indeterminate = n > 0 && n < all.length; }
+    var cn = document.getElementById('mp-n'); if(cn) cn.textContent = n + ' selected';
+    var b = document.getElementById('mp-del');
+    if(b){ b.disabled = n === 0; b.dataset.armed = ''; b.classList.remove('armed'); b.textContent = tr('Delete selected'); }
+  }
+  function deleteProjects(ids){
+    closeModal();
+    run(function(){
+      return ids.reduce(function(chain, id){ return chain.then(function(){ return api('DELETE', '/api/projects/' + id); }); }, Promise.resolve())
+        .catch(function(e){ return load(true).then(function(){ throw e; }); });
+    }, ids.length === 1 ? 'Project deleted' : ids.length + ' projects deleted');
   }
   function openTaskModal(t, group){
     var tpid = t ? t.projectId : selectedId;
@@ -1505,7 +1586,8 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     return '<details class="help"><summary>How to edit this log</summary><ul>' +
       '<li><b>Find your way around:</b> Switch between Schedule and Timeline at the top. Use the filters to narrow by client, project, person, process, status or time, and move the calendar with the slider, the buttons or by dragging.</li>' +
       '<li><b>Timeline:</b> shows every project on one calendar. Open a project to see its main and sub processes.</li>' +
-      '<li><b>Edit a project:</b> Edit project changes the name, client, PO number and subject notes. Delete project is at the bottom of that window.</li>' +
+      '<li><b>Edit a project:</b> Edit project changes the name, client, PO number and subject notes. Delete project appears at the bottom of that window once the project is finished.</li>' +
+      '<li><b>Delete finished projects:</b> Manage finished projects lists every finished project. Tick one or several, then press Delete selected and confirm.</li>' +
       '<li><b>Add a new project:</b> New project at the top. Duplicate copies the current project\'s processes and people in charge as a starting point, without actual dates.</li>' +
       '<li><b>Subject images:</b> Add images uploads photos or drawings. Edit on an image changes its caption or order, or deletes it.</li>' +
       '<li><b>Processes:</b> click a process name to edit it or delete it. The arrows move it up or down within its main process. Rename changes a main process name, and + Add adds a sub process to it.</li>' +
@@ -1721,9 +1803,22 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     }
     if(act === 'export-xlsx'){ exportExcel(el.dataset.scope === 'all'); return; }
     if(act === 'cal-today'){ var tw = appEl.querySelector('.sched-wrap'); if(tw) scrollToToday(tw, true); return; }
-    if(act === 'reset-filters'){ filters = { q: '', client: '', project: '', who: '', group: '', status: '', time: '', from: '', to: '' }; needScroll = true; render(); return; }
+    if(act === 'reset-filters'){ filters = { q: '', client: '', project: '', who: '', group: '', status: '', pstatus: '', time: '', from: '', to: '' }; needScroll = true; render(); return; }
     if(act === 'open-project'){ selectProject(el.dataset.id); window.scrollTo(0, 0); return; }
     if(!canEdit) return;
+    if(act === 'manage-projects'){ openManageModal(); return; }
+    if(act === 'mp-del-one'){
+      var oid = el.dataset.id;
+      armDelete(el, 'Delete', function(){ if(projStatus(oid) !== 'done') return; deleteProjects([oid]); });
+      return;
+    }
+    if(act === 'mp-del-sel'){
+      armDelete(el, 'Delete selected', function(){
+        var ids = Object.keys(modalState && modalState.sel || {}).filter(function(k){ return modalState.sel[k] && projStatus(k) === 'done'; });
+        if(ids.length) deleteProjects(ids);
+      });
+      return;
+    }
     if(act === 'new-project') openProjectModal(null);
     else if(act === 'edit-project'){ var p = currentProject(); if(p) openProjectModal(p); }
     else if(act === 'add-task') openTaskModal(null, el.dataset.group || '');
@@ -1754,6 +1849,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     else if(act === 'delete-project'){
       var proj = currentProject(); if(!proj) return;
       armDelete(el, 'Delete project', function(){
+        if(projStatus(proj.id) !== 'done') return;
         closeModal();
         run(function(){ return api('DELETE', '/api/projects/' + proj.id).then(function(){ selectedId = null; }); }, 'Project deleted');
       });
@@ -1769,6 +1865,11 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
   });
   document.addEventListener('change', function(e){
     var tid = e.target.id || '';
+    if(e.target.classList && e.target.classList.contains('mp-chk')){ mpSync(); return; }
+    if(tid === 'mp-all'){
+      Array.prototype.forEach.call(modalEl.querySelectorAll('.mp-chk'), function(c){ c.checked = e.target.checked; });
+      mpSync(); return;
+    }
     if(tid === 'langSel'){ setLang(e.target.value); render(); }
     else if(tid === 'projectSelect') selectProject(e.target.value);
     else if(/^flt-/.test(tid) && tid !== 'flt-q'){
