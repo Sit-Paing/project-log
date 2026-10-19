@@ -113,6 +113,23 @@ button,input,select{font:inherit;color:inherit}
 .mp-info{flex:1;min-width:0}
 .mp-info b{display:block;overflow-wrap:anywhere}
 .mp-info .sub{display:block;color:var(--muted);font-size:12px;overflow-wrap:anywhere}
+.sheet.wide{width:min(860px,100%)}
+details.wl{border-bottom:1px solid var(--line-soft)}
+details.wl>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:6px 14px;align-items:center;padding:12px 4px}
+details.wl>summary::-webkit-details-marker{display:none}
+details.wl>summary:focus-visible{outline:2px solid var(--plan);outline-offset:2px}
+.wl-name{font-weight:600;font-size:15px;overflow-wrap:anywhere}
+.wl-name:before{content:'▸';display:inline-block;width:16px;color:var(--muted)}
+details.wl[open] .wl-name:before{content:'▾'}
+.wl-n{font-weight:700}
+.wl-bar{grid-column:1/-1;height:8px;border-radius:4px;background:var(--todo-wash);overflow:hidden}
+.wl-bar i{display:block;height:100%;background:var(--plan);min-width:2px}
+.wl-chips{grid-column:1/-1;display:flex;gap:6px 8px;flex-wrap:wrap;align-items:center;color:var(--muted);font-size:12px}
+.wl-body{padding:0 4px 12px 20px}
+.wl-proj{font-weight:600;font-size:13px;margin:10px 0 2px;overflow-wrap:anywhere}
+.wl-row{display:flex;gap:4px 10px;align-items:center;flex-wrap:wrap;padding:5px 0 5px 10px;border-bottom:1px dotted var(--line-soft)}
+.wl-row .nm{flex:1 1 200px;min-width:0;overflow-wrap:anywhere}
+.wl-row .dd{color:var(--muted);font-size:12px}
 .hint-sm{color:var(--muted);font-size:12px;max-width:60%}
 
 /* toolbar */
@@ -563,6 +580,14 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     'Finished': ['เสร็จจริง', 'ပြီးဆုံးခဲ့သည်'],
     'Manage projects lists every project with its status. Tick one or several, then press Delete selected and confirm.': ['จัดการโปรเจกต์ แสดงทุกโปรเจกต์พร้อมสถานะ ติ๊กเลือกหนึ่งหรือหลายโปรเจกต์ แล้วกด ลบที่เลือก และยืนยัน', 'ပရောဂျက် စီမံရန် တွင် ပရောဂျက်အားလုံးကို အခြေအနေနှင့်တကွ ပြထားသည်။ တစ်ခု သို့မဟုတ် အများအပြား ရွေးပြီး ရွေးထားသည်များ ဖျက်ရန် ကိုနှိပ်၍ အတည်ပြုပါ။'],
     'Delete projects:': ['ลบโปรเจกต์:', 'ပရောဂျက်များ ဖျက်ခြင်း:'],
+    'Expand all': ['ขยายทั้งหมด', 'အားလုံး ဖွင့်ရန်'],
+    'Collapse all': ['ย่อทั้งหมด', 'အားလုံး ပိတ်ရန်'],
+    'Workload': ['ภาระงาน', 'အလုပ်ပမာဏ'],
+    'Workload by person': ['ภาระงานแยกตามบุคคล', 'လူတစ်ဦးချင်းစီ၏ အလုပ်ပမာဏ'],
+    'Processes per person across all projects. Open means not finished yet. Press a name to see the projects and processes.': ['ขั้นตอนของแต่ละคนในทุกโปรเจกต์ "ค้างอยู่" หมายถึงยังไม่เสร็จ กดที่ชื่อเพื่อดูโปรเจกต์และขั้นตอน', 'ပရောဂျက်အားလုံးတွင် လူတစ်ဦးချင်းစီ၏ လုပ်ငန်းစဉ်များ။ "ကျန်ရှိ" ဆိုသည်မှာ မပြီးသေးခြင်း။ ပရောဂျက်နှင့် လုပ်ငန်းစဉ်များကြည့်ရန် အမည်ကို နှိပ်ပါ။'],
+    'Include finished processes': ['รวมขั้นตอนที่เสร็จแล้ว', 'ပြီးသော လုပ်ငန်းစဉ်များ ထည့်ရေတွက်ရန်'],
+    'No one assigned': ['ยังไม่ระบุผู้รับผิดชอบ', 'တာဝန်ခံ မသတ်မှတ်ရသေး'],
+    'No processes to show.': ['ไม่มีขั้นตอนที่จะแสดง', 'ပြရန် လုပ်ငန်းစဉ် မရှိပါ။'],
     'Ongoing': ['กำลังดำเนินการ', 'ဆောင်ရွက်နေဆဲ'],
     'Project status': ['สถานะโปรเจกต์', 'ပရောဂျက် အခြေအနေ'],
     'Process status': ['สถานะขั้นตอน', 'လုပ်ငန်းစဉ် အခြေအနေ'],
@@ -645,6 +670,11 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
 
   /* texts with numbers or names in them: [pattern, function(match, language) -> text] */
   var RULES = [
+    [/^(\d+) open$/, function(m, l){ return l === 'th' ? 'ค้างอยู่ ' + m[1] : 'ကျန်ရှိ ' + m[1]; }],
+    [/^(\d+) open processes?$/, function(m, l){ return l === 'th' ? 'ขั้นตอนที่ค้างอยู่ ' + m[1] : 'ကျန်ရှိသော လုပ်ငန်းစဉ် ' + m[1] + ' ခု'; }],
+    [/^(\d+) (?:person|people)$/, function(m, l){ return l === 'th' ? m[1] + ' คน' : m[1] + ' ဦး'; }],
+    [/^(\d+) projects?$/, function(m, l){ return l === 'th' ? m[1] + ' โปรเจกต์' : 'ပရောဂျက် ' + m[1] + ' ခု'; }],
+    [/^(\d+) done$/, function(m, l){ return l === 'th' ? 'เสร็จ ' + m[1] : 'ပြီး ' + m[1]; }],
     [/^(\d+) selected$/, function(m, l){ return l === 'th' ? 'เลือกแล้ว ' + m[1] : 'ရွေးထားသည် ' + m[1]; }],
     [/^(\d+) projects deleted$/, function(m, l){ return l === 'th' ? 'ลบ ' + m[1] + ' โปรเจกต์แล้ว' : 'ပရောဂျက် ' + m[1] + ' ခု ဖျက်ပြီးပါပြီ'; }],
     [/^(\d+) process(?:es)?$/, function(m, l){ return l === 'th' ? m[1] + ' ขั้นตอน' : 'လုပ်ငန်းစဉ် ' + m[1] + ' ခု'; }],
@@ -1021,6 +1051,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     var topBar = '<header class="top"><div class="brand">' + logoHTML() + '</div>';
     if(projects.length){
       topBar += '<div class="view-seg" role="group" aria-label="View"><button data-act="view-schedule" class="' + (isTL ? '' : 'on') + '" aria-pressed="' + (!isTL) + '">Schedule</button><button data-act="view-timeline" class="' + (isTL ? 'on' : '') + '" aria-pressed="' + isTL + '">Timeline</button></div>';
+      topBar += '<button class="btn" data-act="open-workload">Workload</button>';
     }
     if(projects.length){
       var opts = '';
@@ -1445,6 +1476,72 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
       '<div class="r"><button type="button" class="btn" data-act="close-modal">Cancel</button><button type="submit" class="btn primary">' + (p ? 'Save' : 'Create project') + '</button></div></div></form></div>';
     var f = document.getElementById('f-pname'); if(f) f.focus();
   }
+  /* ---------- workload: what each person has on their plate ---------- */
+  function workloadData(all){
+    var pm = {}, map = {}, arr = [];
+    projects.forEach(function(p){ pm[p.id] = p; });
+    allTasks.forEach(function(t){
+      if(!pm[t.projectId]) return;
+      var st = statusOf(t);
+      if(!all && st === 'done') return;
+      var nm = (t.incharge || '').trim(), k = nm.toLowerCase();
+      if(!map[k]){ map[k] = { name: nm, key: k, tasks: [], c: { done: 0, progress: 0, late: 0, todo: 0 }, projs: {} }; arr.push(map[k]); }
+      var e = map[k]; e.tasks.push(t); e.c[st]++; e.projs[t.projectId] = 1;
+    });
+    arr.sort(function(a, b){
+      if(!a.key !== !b.key) return a.key ? -1 : 1;
+      return (b.tasks.length - a.tasks.length) || a.name.localeCompare(b.name);
+    });
+    return arr;
+  }
+  function openWorkloadModal(){
+    modalState = { type: 'workload', all: false, open: {} };
+    drawWorkload();
+  }
+  function drawWorkload(){
+    var st = modalState, sheet = modalEl.querySelector('.sheet'), top = sheet ? sheet.scrollTop : 0;
+    Array.prototype.forEach.call(modalEl.querySelectorAll('details.wl'), function(d){ st.open[d.dataset.k] = d.open; });
+    var data = workloadData(st.all), max = 1, people = 0, total = 0, pm = {};
+    projects.forEach(function(p){ pm[p.id] = p; });
+    data.forEach(function(e){ if(e.tasks.length > max) max = e.tasks.length; if(e.key) people++; total += e.tasks.length; });
+    var h = '<div class="scrim" data-act="scrim"><div class="sheet wide" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">Workload by person</h2>' +
+      '<p class="note">Processes per person across all projects. Open means not finished yet. Press a name to see the projects and processes.</p>' +
+      '<div class="mp-bar"><label><input type="checkbox" id="wl-all"' + (st.all ? ' checked' : '') + '> Include finished processes</label>' +
+      (data.length ? '<button type="button" class="btn" data-act="wl-toggle-all">Expand all</button>' : '') +
+      '<span class="mp-n mono"><span>' + people + (people === 1 ? ' person' : ' people') + '</span> · <span>' + total + (st.all ? (total === 1 ? ' process' : ' processes') : (total === 1 ? ' open process' : ' open processes')) + '</span></span></div>';
+    if(!data.length){
+      h += '<p class="sub-empty">No processes to show.</p>';
+    }
+    data.forEach(function(e){
+      var k = 'k:' + e.key, np = Object.keys(e.projs).length, n = e.tasks.length;
+      var open = st.open[k] ? ' open' : '';
+      h += '<details class="wl" data-k="' + esc(k) + '"' + open + '><summary><span class="wl-name">' + (e.key ? '<span class="mp-u">' + esc(e.name) + '</span>' : '<span>No one assigned</span>') + '</span>' +
+        '<span class="wl-n mono">' + n + (st.all ? (n === 1 ? ' process' : ' processes') : ' open') + '</span>' +
+        '<span class="wl-bar" aria-hidden="true"><i style="width:' + Math.round(n / max * 100) + '%"></i></span>' +
+        '<span class="wl-chips">' +
+        (e.c.progress ? '<span class="pill progress"><i></i>' + e.c.progress + ' in progress</span>' : '') +
+        (e.c.late ? '<span class="pill late"><i></i>' + e.c.late + ' overdue</span>' : '') +
+        (e.c.todo ? '<span class="pill todo"><i></i>' + e.c.todo + ' not started</span>' : '') +
+        (e.c.done ? '<span class="pill done"><i></i>' + e.c.done + ' done</span>' : '') +
+        '<span>' + np + (np === 1 ? ' project' : ' projects') + '</span></span></summary><div class="wl-body">';
+      projects.forEach(function(p){
+        var ts = e.tasks.filter(function(t){ return t.projectId === p.id; });
+        if(!ts.length) return;
+        h += '<div class="wl-proj"><span class="mp-u">' + esc(p.name || 'Untitled') + '</span></div>';
+        groupsOf(ts).forEach(function(g){
+          g.tasks.forEach(function(t){
+            var s2 = statusOf(t), pd = parse(t.planDue);
+            h += '<div class="wl-row"><span class="nm"><span class="mp-u">' + esc(t.group) + '</span> › <span class="mp-u">' + esc(t.name) + '</span></span>' +
+              '<span class="pill ' + s2 + '"><i></i>' + STATUS_LABEL[s2] + '</span>' + (pd != null ? '<span class="dd">due ' + fmt(pd) + '</span>' : '') + '</div>';
+          });
+        });
+      });
+      h += '</div></details>';
+    });
+    h += '<div class="actions"><div class="r"><button type="button" class="btn" data-act="close-modal">Close</button></div></div></div></div>';
+    modalEl.innerHTML = h;
+    var ns = modalEl.querySelector('.sheet'); if(ns) ns.scrollTop = top;
+  }
   function finishedProjects(){ return projects.slice(); }
   function openManageModal(){
     modalState = { type: 'manage', sel: {} };
@@ -1803,6 +1900,12 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     if(act === 'cal-today'){ var tw = appEl.querySelector('.sched-wrap'); if(tw) scrollToToday(tw, true); return; }
     if(act === 'reset-filters'){ filters = { q: '', client: '', project: '', who: '', group: '', status: '', pstatus: '', time: '', from: '', to: '' }; needScroll = true; render(); return; }
     if(act === 'open-project'){ selectProject(el.dataset.id); window.scrollTo(0, 0); return; }
+    if(act === 'open-workload'){ openWorkloadModal(); return; }
+    if(act === 'wl-toggle-all'){
+      var ds = modalEl.querySelectorAll('details.wl'), anyClosed = Array.prototype.some.call(ds, function(d){ return !d.open; });
+      Array.prototype.forEach.call(ds, function(d){ d.open = anyClosed; });
+      el.textContent = tr(anyClosed ? 'Collapse all' : 'Expand all'); return;
+    }
     if(!canEdit) return;
     if(act === 'manage-projects'){ openManageModal(); return; }
     if(act === 'mp-del-one'){
@@ -1863,6 +1966,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
   document.addEventListener('change', function(e){
     var tid = e.target.id || '';
     if(e.target.classList && e.target.classList.contains('mp-chk')){ mpSync(); return; }
+    if(tid === 'wl-all'){ modalState.all = e.target.checked; drawWorkload(); return; }
     if(tid === 'mp-all'){
       Array.prototype.forEach.call(modalEl.querySelectorAll('.mp-chk'), function(c){ c.checked = e.target.checked; });
       mpSync(); return;
