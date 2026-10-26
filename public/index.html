@@ -130,6 +130,27 @@ details.wl[open] .wl-name:before{content:'▾'}
 .wl-row{display:flex;gap:4px 10px;align-items:center;flex-wrap:wrap;padding:5px 0 5px 10px;border-bottom:1px dotted var(--line-soft)}
 .wl-row .nm{flex:1 1 200px;min-width:0;overflow-wrap:anywhere}
 .wl-row .dd{color:var(--muted);font-size:12px}
+.pill.stage{background:var(--surface-2);color:var(--ink);border:1px solid var(--line)}
+.stg-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:0 14px 14px}
+@media (max-width:900px){.stg-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){.stg-grid{grid-template-columns:minmax(0,1fr)}}
+.stg{border:1px solid var(--line);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px;background:var(--surface-2);min-width:0}
+.stg.done{border-color:var(--plan)}
+.stg.current{border-color:var(--plan);box-shadow:inset 0 0 0 1px var(--plan);background:var(--surface)}
+.stg-h{display:flex;align-items:center;gap:8px;min-width:0}
+.stg-h b{overflow-wrap:anywhere}
+.stg-n{flex:none;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;background:var(--todo-wash);color:var(--muted)}
+.stg.done .stg-n,.stg.current .stg-n{background:var(--plan);color:#fff}
+.stg-st{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.stg.current .stg-st{color:var(--plan-text)}
+.stg-files{display:flex;flex-direction:column;gap:6px;min-width:0}
+.stg-f{display:flex;align-items:center;gap:8px;min-width:0}
+.stg-f a.th{flex:none;width:44px;height:44px;border-radius:5px;overflow:hidden;border:1px solid var(--line);background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--danger);text-decoration:none}
+.stg-f a.th img{width:100%;height:100%;object-fit:cover;display:block}
+.stg-f a.fn{flex:1;min-width:0;overflow-wrap:anywhere;font-size:12.5px;color:var(--ink)}
+.stg-w{font-size:12.5px;color:var(--muted);overflow-wrap:anywhere}
+.stg-w b{color:var(--ink);font-weight:600}
+.stg-act{display:flex;gap:6px;flex-wrap:wrap}
 .hint-sm{color:var(--muted);font-size:12px;max-width:60%}
 
 /* toolbar */
@@ -388,7 +409,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
   function todayN(){ var d = new Date(); return Math.round(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / MS); }
   var TODAY = todayN();
 
-  var projects = [], allTasks = [], tasks = [], allImages = [], images = [];
+  var projects = [], allTasks = [], tasks = [], allImages = [], images = [], allStageFiles = [];
   var projectsLoaded = false, loadFailed = false, lastSig = '';
   var selectedId = null, needScroll = false;
   var editKey = '', canEdit = false;
@@ -396,7 +417,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
   var ALL = '__all__';
   var view = lsGet('projectlog.view') === 'timeline' ? 'timeline' : 'schedule';
   var tlOpen = (function(){ try { return JSON.parse(lsGet('projectlog.tl2') || '{}') || {}; } catch(e){ return {}; } })();
-  var filters = { q: '', client: '', project: '', who: '', group: '', status: '', pstatus: '', time: '', from: '', to: '' };
+  var filters = { q: '', client: '', project: '', who: '', group: '', status: '', pstatus: '', stage: '', time: '', from: '', to: '' };
   var DW = (function(){ var n = parseInt(lsGet('projectlog.dw'), 10); return [20, 28, 40, 56].indexOf(n) >= 0 ? n : 28; })();
 
   var appEl = document.getElementById('app');
@@ -588,6 +609,38 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     'Include finished processes': ['รวมขั้นตอนที่เสร็จแล้ว', 'ပြီးသော လုပ်ငန်းစဉ်များ ထည့်ရေတွက်ရန်'],
     'No one assigned': ['ยังไม่ระบุผู้รับผิดชอบ', 'တာဝန်ခံ မသတ်မှတ်ရသေး'],
     'No processes to show.': ['ไม่มีขั้นตอนที่จะแสดง', 'ပြရန် လုပ်ငန်းစဉ် မရှိပါ။'],
+    'Assign': ['มอบหมาย', 'တာဝန်ပေးရန်'],
+    'Person in charge': ['ผู้รับผิดชอบ', 'တာဝန်ခံ'],
+    'Open file': ['เปิดไฟล์', 'ဖိုင် ဖွင့်ရန်'],
+    'Sales steps': ['ขั้นตอนการขาย', 'အရောင်းအဆင့်များ'],
+    'Sales step': ['ขั้นตอนการขาย', 'အရောင်းအဆင့်'],
+    'Visit customer / RFQ': ['เยี่ยมลูกค้า / RFQ', 'ဖောက်သည်သို့ သွားရောက်ခြင်း / RFQ'],
+    'Quotation': ['ใบเสนอราคา', 'ကိုးကားစျေးနှုန်း'],
+    'PO': ['PO', 'PO'],
+    'Invoice': ['ใบแจ้งหนี้', 'ငွေတောင်းခံလွှာ'],
+    'No step set yet': ['ยังไม่ได้ตั้งขั้นตอน', 'အဆင့် မသတ်မှတ်ရသေး'],
+    'Not set yet': ['ยังไม่ได้ตั้ง', 'မသတ်မှတ်ရသေး'],
+    'No step yet': ['ยังไม่มีขั้นตอน', 'အဆင့် မရှိသေး'],
+    'Any step': ['ทุกขั้นตอน', 'အဆင့် အားလုံး'],
+    'Current': ['ปัจจุบัน', 'လက်ရှိ'],
+    'Upcoming': ['ที่จะถึง', 'လာမည့်'],
+    'Set as current': ['ตั้งเป็นขั้นตอนปัจจุบัน', 'လက်ရှိအဖြစ် သတ်မှတ်ရန်'],
+    'Add photo or PDF': ['เพิ่มรูปหรือ PDF', 'ဓာတ်ပုံ သို့မဟုတ် PDF ထည့်ရန်'],
+    'Remove': ['เอาออก', 'ဖယ်ရှားရန်'],
+    'No files yet.': ['ยังไม่มีไฟล์', 'ဖိုင် မရှိသေးပါ။'],
+    'Step updated': ['อัปเดตขั้นตอนแล้ว', 'အဆင့် ပြောင်းပြီးပါပြီ'],
+    'File added': ['เพิ่มไฟล์แล้ว', 'ဖိုင် ထည့်ပြီးပါပြီ'],
+    'File removed': ['ลบไฟล์แล้ว', 'ဖိုင် ဖယ်ရှားပြီးပါပြီ'],
+    'Choose a photo or a PDF file.': ['เลือกรูปภาพหรือไฟล์ PDF', 'ဓာတ်ပုံ သို့မဟုတ် PDF ဖိုင် ရွေးပါ။'],
+    'Up to 6 files in each step.': ['แต่ละขั้นตอนใส่ได้สูงสุด 6 ไฟล์', 'အဆင့်တစ်ခုလျှင် ဖိုင် ၆ ခုအထိ'],
+    'That PDF is too large. The limit is about 1.3 MB. Compress it or split it first.': ['ไฟล์ PDF ใหญ่เกินไป จำกัดประมาณ 1.3 MB ให้บีบอัดหรือแบ่งไฟล์ก่อน', 'ထို PDF သည် ကြီးလွန်းသည်။ ကန့်သတ်ချက် ၁.၃ MB ခန့်။ အရင် ချုံ့ပါ သို့မဟုတ် ခွဲပါ။'],
+    'Files': ['ไฟล์', 'ဖိုင်များ'],
+    'File': ['ไฟล์', 'ဖိုင်'],
+    'Type': ['ประเภท', 'အမျိုးအစား'],
+    'Link': ['ลิงก์', 'လင့်ခ်'],
+    'Photo': ['รูปภาพ', 'ဓာတ်ပုံ'],
+    'Sales steps:': ['ขั้นตอนการขาย:', 'အရောင်းအဆင့်များ:'],
+    'Each project moves through Visit customer / RFQ, Quotation, PO and Invoice. Press Set as current on a step when the project reaches it. Assign sets who is in charge of that step. Add photo or PDF attaches a file to that step, and Remove deletes it.': ['แต่ละโปรเจกต์ผ่านเยี่ยมลูกค้า / RFQ, ใบเสนอราคา, PO และใบแจ้งหนี้ กด ตั้งเป็นขั้นตอนปัจจุบัน เมื่อโปรเจกต์ถึงขั้นนั้น มอบหมาย ใช้กำหนดผู้รับผิดชอบของขั้นตอน เพิ่มรูปหรือ PDF จะแนบไฟล์กับขั้นตอน และ เอาออก จะลบไฟล์', 'ပရောဂျက်တစ်ခုစီသည် ဖောက်သည်သို့ သွားရောက်ခြင်း / RFQ၊ ကိုးကားစျေးနှုန်း၊ PO နှင့် ငွေတောင်းခံလွှာ အဆင့်များကို ဖြတ်သန်းသည်။ ပရောဂျက် ထိုအဆင့်သို့ ရောက်လျှင် လက်ရှိအဖြစ် သတ်မှတ်ရန် ကို နှိပ်ပါ။ တာဝန်ပေးရန် ဖြင့် အဆင့်၏ တာဝန်ခံကို သတ်မှတ်နိုင်သည်။ ဓာတ်ပုံ သို့မဟုတ် PDF ထည့်ရန် ဖြင့် ဖိုင်ကို ထိုအဆင့်တွင် ထည့်ပြီး ဖယ်ရှားရန် ဖြင့် ဖျက်နိုင်သည်။'],
     'Ongoing': ['กำลังดำเนินการ', 'ဆောင်ရွက်နေဆဲ'],
     'Project status': ['สถานะโปรเจกต์', 'ပရောဂျက် အခြေအနေ'],
     'Process status': ['สถานะขั้นตอน', 'လုပ်ငန်းစဉ် အခြေအနေ'],
@@ -596,7 +649,6 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     'There are no projects yet.': ['ยังไม่มีโปรเจกต์', 'ပရောဂျက် မရှိသေးပါ။'],
     'Select all': ['เลือกทั้งหมด', 'အားလုံး ရွေးရန်'],
     'Delete selected': ['ลบที่เลือก', 'ရွေးထားသည်များ ဖျက်ရန်'],
-    'No client': ['ไม่มีลูกค้า', 'ဝယ်ယူသူ မရှိ'],
     'Enter the main process.': ['ใส่ขั้นตอนหลัก', 'အဓိက လုပ်ငန်းစဉ် ထည့်ပါ။'],
     'Enter the sub process.': ['ใส่ขั้นตอนย่อย', 'လုပ်ငန်းစဉ်ခွဲ ထည့်ပါ။'],
     'The due date is before the start date.': ['วันกำหนดเสร็จอยู่ก่อนวันเริ่ม', 'ပြီးဆုံးရက်သည် စတင်ရက်ထက် စောနေသည်။'],
@@ -784,7 +836,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
       var sig = JSON.stringify(d);
       if(!force && projectsLoaded && sig === lastSig) return;
       lastSig = sig;
-      projects = d.projects || []; allTasks = d.tasks || []; allImages = d.images || []; projectsLoaded = true;
+      projects = d.projects || []; allTasks = d.tasks || []; allImages = d.images || []; allStageFiles = d.stageFiles || []; projectsLoaded = true;
       var found = (selectedId === ALL && projects.length > 1) || projects.some(function(p){ return p.id === selectedId; });
       if(!found){
         var stored = lsGet('projectlog.selected');
@@ -878,6 +930,14 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     if(ts.every(function(t){ return !!t.actEnd; })) return 'done';
     return ts.some(function(t){ return !!(t.actStart || t.actEnd); }) ? 'progress' : 'todo';
   }
+  /* sales steps: set by hand, each can hold photos and PDFs */
+  var STAGES = [['rfq', 'Visit customer / RFQ'], ['quotation', 'Quotation'], ['po', 'PO'], ['invoice', 'Invoice']];
+  var STAGE_OPTS = [['', 'Any step'], ['none', 'No step yet']].concat(STAGES);
+  var MAX_STAGE_FILES = 6;
+  function stageIdx(id){ for(var i = 0; i < STAGES.length; i++) if(STAGES[i][0] === id) return i; return -1; }
+  function stageLabel(id){ var i = stageIdx(id); return i < 0 ? '' : STAGES[i][1]; }
+  function stagePill(id){ return stageIdx(id) < 0 ? '' : '<span class="pill stage"><i></i>' + stageLabel(id) + '</span>'; }
+  function stageFilesOf(pid, st){ return allStageFiles.filter(function(f){ return f.projectId === pid && f.stage === st; }); }
   function projPill(pid){ var k = projStatus(pid); return '<span class="pill ' + k + '"><i></i>' + PSTATUS_LABEL[k] + '</span>'; }
 
   function logoHTML(){
@@ -921,7 +981,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     return null;
   }
   function filtersActive(){
-    return !!(filters.q || filters.client || filters.project || filters.who || filters.group || filters.status || filters.pstatus || filters.time);
+    return !!(filters.q || filters.client || filters.project || filters.who || filters.group || filters.status || filters.pstatus || filters.stage || filters.time);
   }
   function filterTasks(list){
     var q = filters.q.trim().toLowerCase(), w = windowOf(), pm = {};
@@ -933,6 +993,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
       if(filters.who && (t.incharge || '') !== filters.who) return false;
       if(filters.group && t.group !== filters.group) return false;
       if(filters.pstatus && projStatus(t.projectId) !== filters.pstatus) return false;
+      if(filters.stage){ var ps = p.stage || ''; if(filters.stage === 'none'){ if(ps) return false; } else if(ps !== filters.stage) return false; }
       if(filters.status){
         var s = statusOf(t);
         if(filters.status === 'open'){ if(s === 'done') return false; }
@@ -978,6 +1039,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
       (isAll ? selHTML('flt-project', 'Project', '<option value="">All projects</option>' + projects.filter(function(x){ return !filters.client || (x.client || '') === filters.client; }).map(function(x){ return '<option value="' + esc(x.id) + '"' + (x.id === filters.project ? ' selected' : '') + '>' + esc(x.name || 'Untitled') + '</option>'; }).join('')) : '') +
       selHTML('flt-who', 'In charge', optHTML(lists.whos, filters.who, 'Everyone')) +
       selHTML('flt-group', 'Main process', optHTML(lists.groups, filters.group, 'All processes')) +
+      (isAll ? selHTML('flt-stage', 'Sales step', pairsHTML(STAGE_OPTS, filters.stage)) : '') +
       (isAll ? selHTML('flt-pstatus', 'Project status', pairsHTML(PSTATUS_OPTS, filters.pstatus)) : '') +
       selHTML('flt-status', 'Process status', pairsHTML(STATUS_OPTS, filters.status)) +
       selHTML('flt-time', 'Time', pairsHTML(TIME_OPTS, filters.time));
@@ -1107,7 +1169,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
         '<div><dt>Clients</dt><dd class="mono">' + Object.keys(cls).length + '</dd></div>' +
         '<div><dt>Planned</dt><dd class="mono">' + esc(sched) + '</dd></div></dl></div>' + (canEdit ? '<div class="bar-actions"><button class="btn" data-act="manage-projects">Manage projects</button></div>' : '') + '</section>';
     } else {
-      html += '<section class="ph"><div class="ph-main"><div class="ph-title"><h1>' + esc(p.name || 'Untitled project') + '</h1>' + projPill(p.id) + '</div>' +
+      html += '<section class="ph"><div class="ph-main"><div class="ph-title"><h1>' + esc(p.name || 'Untitled project') + '</h1>' + projPill(p.id) + stagePill(p.stage) + '</div>' +
         '<dl class="meta"><div><dt>Client</dt><dd>' + (esc(p.client) || '—') + '</dd></div>' +
         '<div><dt>PO No.</dt><dd class="mono">' + (esc(p.po) || '—') + '</dd></div>' +
         '<div><dt>Planned</dt><dd class="mono">' + esc(sched) + '</dd></div></dl></div>' +
@@ -1121,7 +1183,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
       '<span class="pill late"><i></i>' + counts.late + ' overdue</span>' +
       '<span class="pill todo"><i></i>' + counts.todo + ' not started</span></div></section>';
 
-    if(!isAll) html += subjectHTML(p);
+    if(!isAll) html += stagesHTML(p) + subjectHTML(p);
 
     html += filterBarHTML(lists, list.length, scope.length, isAll);
 
@@ -1186,7 +1248,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     if(e.key) lead += '<button class="tl-tg" data-act="tl-toggle" data-id="' + esc(e.key) + '" aria-expanded="' + !!e.open + '" aria-label="' + (e.open ? 'Hide' : 'Show') + ' details of ' + esc(e.name) + '">' + (e.open ? '▾' : '▸') + '</button>';
     else if(e.level > 0) lead += '<span class="tl-tg" aria-hidden="true"></span>';
     var name = '<span class="pname ro">' + esc(e.name || 'Untitled') + '</span>' + (e.sub ? '<span class="pname-sub">' + esc(e.sub) + '</span>' : '') +
-      (e.openId ? '<button class="mini" data-act="open-project" data-id="' + esc(e.openId) + '" style="margin-top:4px">Open</button>' : '');
+       (e.stage ? '<div style="margin-top:4px">' + stagePill(e.stage) + '</div>' : '') + (e.openId ? '<button class="mini" data-act="open-project" data-id="' + esc(e.openId) + '" style="margin-top:4px">Open</button>' : '');
     var aeTxt = g.as == null ? '—' : (g.live ? 'ongoing' : fmt(g.ae));
     var note = g.late ? ' · ' + g.late + ' overdue' : '';
     return '<tr class="plan tl l' + e.level + '"><td class="proc c-proc" rowspan="2"><div class="tl-name">' + lead + '<div>' + name + '</div></div></td>' +
@@ -1217,7 +1279,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
       var ts = list.filter(function(t){ return t.projectId === pr.id; });
       if(!ts.length) return;
       var open = tlOpen[pr.id] !== false;
-      h += tlRows({ level: 0, key: pr.id, open: open, openId: pr.id, name: pr.name, sub: (pr.client || 'No client') + (pr.po ? ' · PO ' + pr.po : ''), ag: agg(ts) }, r0, r1);
+      h += tlRows({ level: 0, key: pr.id, open: open, openId: pr.id, stage: pr.stage, name: pr.name, sub: (pr.client || 'No client') + (pr.po ? ' · PO ' + pr.po : ''), ag: agg(ts) }, r0, r1);
       if(open){
         groupsOf(ts).forEach(function(g){
           var gk = pr.id + '|' + g.name, gopen = tlOpen[gk] !== false;
@@ -1265,7 +1327,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
       /* sheet 1: one line per process */
       var ws = wb.addWorksheet(tr('Processes'), { views: [{ state: 'frozen', ySplit: 1 }] });
       ws.columns = [
-        { header: tr('Project'), width: 30 }, { header: tr('Client'), width: 20 }, { header: tr('PO No.'), width: 12 }, { header: tr('Project status'), width: 16 },
+        { header: tr('Project'), width: 30 }, { header: tr('Client'), width: 20 }, { header: tr('PO No.'), width: 12 }, { header: tr('Project status'), width: 16 }, { header: tr('Sales step'), width: 22 },
         { header: tr('Main process'), width: 20 }, { header: tr('Sub process'), width: 24 }, { header: tr('In charge'), width: 16 },
         { header: tr('Plan') + ' – ' + tr('Start'), width: 15 }, { header: tr('Plan') + ' – ' + tr('Due'), width: 15 },
         { header: tr('Actual') + ' – ' + tr('Start'), width: 15 }, { header: tr('Actual') + ' – ' + tr('Finished'), width: 15 },
@@ -1276,11 +1338,11 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
       rows.forEach(function(r){
         var t = r.t, pd = parse(t.planDue), ae = parse(t.actEnd), st = statusOf(t), late = '';
         if(pd != null){ if(ae != null && ae > pd) late = ae - pd; else if(ae == null && TODAY > pd) late = TODAY - pd; }
-        ws.addRow([r.p.name, r.p.client, r.p.po, tr(PSTATUS_LABEL[projStatus(r.p.id)]), t.group, t.name, t.incharge,
+        ws.addRow([r.p.name, r.p.client, r.p.po, tr(PSTATUS_LABEL[projStatus(r.p.id)]), r.p.stage ? tr(stageLabel(r.p.stage)) : '', t.group, t.name, t.incharge,
           xlDate(parse(t.planStart)), xlDate(pd), xlDate(parse(t.actStart)), xlDate(ae), tr(STATUS_LABEL[st]), late]);
       });
-      [8, 9, 10, 11].forEach(function(c){ ws.getColumn(c).numFmt = 'dd mmm yyyy'; });
-      ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 13 } };
+      [9, 10, 11, 12].forEach(function(c){ ws.getColumn(c).numFmt = 'dd mmm yyyy'; });
+      ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 14 } };
 
       /* sheet 2: plan and actual bars over the calendar, like the paper schedule */
       var rg = everything ? rangeOf(list) : calRange(list), r0 = rg[0], r1 = Math.min(rg[1], rg[0] + 730), N = r1 - r0 + 1, LEAD = 7;
@@ -1330,7 +1392,36 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
         [a, b].forEach(function(row){ row.getCell(6).numFmt = 'd mmm'; row.getCell(7).numFmt = 'd mmm'; row.getCell(6).alignment = { horizontal: 'left' }; row.getCell(7).alignment = { horizontal: 'left' }; });
         bars(a, pS, pE, 'FF2C7A4B'); bars(b, as, aE, 'FFE6A92B');
       });
-      tl.orderNo = 0; ws.orderNo = 1;   /* Timeline first, Processes second */
+      /* sheet 3: one line per project with its sales step and the files attached to each step */
+      var pj = wb.addWorksheet(tr('Projects'), { views: [{ state: 'frozen', ySplit: 1 }] });
+      pj.columns = [{ header: tr('Project'), width: 30 }, { header: tr('Client'), width: 20 }, { header: tr('PO No.'), width: 12 },
+        { header: tr('Sales step'), width: 22 }, { header: tr('Project status'), width: 16 }].concat(STAGES.reduce(function(a, s2){
+        return a.concat([{ header: tr(s2[1]) + ' – ' + tr('In charge'), width: 18 }, { header: tr(s2[1]) + ' – ' + tr('Files'), width: 28 }]);
+      }, []));
+      pj.getRow(1).eachCell(function(c){ c.font = HEAD.font; c.fill = HEAD.fill; c.alignment = HEAD.alignment; });
+      pj.getRow(1).height = 30;
+      var shown = projects.filter(function(p2){ return everything || rows.some(function(r){ return r.p.id === p2.id; }); });
+      shown.forEach(function(p2){
+        var row = pj.addRow([p2.name, p2.client, p2.po, p2.stage ? tr(stageLabel(p2.stage)) : '', tr(PSTATUS_LABEL[projStatus(p2.id)])].concat(STAGES.reduce(function(a, s2){
+          return a.concat([(p2.stageWho || {})[s2[0]] || '', stageFilesOf(p2.id, s2[0]).map(function(f){ return f.name || 'File'; }).join('\n')]);
+        }, [])));
+        row.alignment = { vertical: 'top', wrapText: true };
+      });
+      /* sheet 4: the attached files, each with a link (only when there are any) */
+      var fl = [];
+      shown.forEach(function(p2){ STAGES.forEach(function(s2){ stageFilesOf(p2.id, s2[0]).forEach(function(f){ fl.push({ p: p2, s: s2, f: f }); }); }); });
+      var fs = null;
+      if(fl.length){
+        fs = wb.addWorksheet(tr('Files'), { views: [{ state: 'frozen', ySplit: 1 }] });
+        fs.columns = [{ header: tr('Project'), width: 30 }, { header: tr('Sales step'), width: 22 }, { header: tr('File'), width: 36 }, { header: tr('Type'), width: 10 }, { header: tr('Link'), width: 12 }];
+        fs.getRow(1).eachCell(function(c){ c.font = HEAD.font; c.fill = HEAD.fill; c.alignment = HEAD.alignment; });
+        fl.forEach(function(x){
+          var r2 = fs.addRow([x.p.name, tr(x.s[1]), x.f.name || 'File', x.f.mime === 'application/pdf' ? 'PDF' : tr('Photo'), '']);
+          r2.getCell(5).value = { text: tr('Open'), hyperlink: location.origin + '/api/stage-files/' + x.f.id };
+          r2.getCell(5).font = { color: { argb: 'FF0563C1' }, underline: true };
+        });
+      }
+      tl.orderNo = 0; ws.orderNo = 1; pj.orderNo = 2; if(fs) fs.orderNo = 3;   /* Timeline, Processes, Projects, Files */
       wb.views = [{ activeTab: 0 }];
       return wb.xlsx.writeBuffer();
     }).then(function(buf){
@@ -1469,6 +1560,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     modalEl.innerHTML = '<div class="scrim" data-act="scrim"><form class="sheet" id="projForm" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">' + (p ? 'Edit project' : 'New project') + '</h2>' +
       '<div class="grid2">' + fld('f-pname', 'Project name', 'text', p ? p.name : '', { full: true, ph: 'e.g. BM3 reduce mold clamping gap' }) +
       fld('f-client', 'Client', 'text', p ? p.client : '') + fld('f-po', 'PO number', 'text', p ? p.po : '', { ph: 'e.g. 4982427' }) +
+      '<div class="fld full"><label for="f-stage">Sales step</label><select id="f-stage"><option value="">Not set yet</option>' + STAGES.map(function(o){ return '<option value="' + o[0] + '"' + (p && p.stage === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></div>' +
       '<div class="fld full"><label for="f-notes">Subject notes</label><textarea id="f-notes" placeholder="Scope, materials, quantities, remarks">' + esc(p ? p.notes : '') + '</textarea></div>' +
       (p ? '' : '<div class="fld full check"><input id="f-tpl" type="checkbox" checked><label for="f-tpl" style="text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink);font-weight:500">Start with the standard processes (ME design, EE design, parts order, automation)</label></div>') +
       '</div><p class="err" id="formErr" role="alert"></p>' +
@@ -1480,9 +1572,17 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
   function workloadData(all){
     var pm = {}, map = {}, arr = [];
     projects.forEach(function(p){ pm[p.id] = p; });
-    allTasks.forEach(function(t){
+    var items = allTasks.slice();
+    projects.forEach(function(p){
+      var cur = stageIdx(p.stage);
+      STAGES.forEach(function(s2, i){
+        var who = (p.stageWho || {})[s2[0]];
+        if(who) items.push({ projectId: p.id, group: 'Sales step', name: s2[1], incharge: who, order: 100000 + i, _step: true, _st: (cur < 0 || i > cur) ? 'todo' : (i === cur ? 'progress' : 'done') });
+      });
+    });
+    items.forEach(function(t){
       if(!pm[t.projectId]) return;
-      var st = statusOf(t);
+      var st = t._st || statusOf(t);
       if(!all && st === 'done') return;
       var nm = (t.incharge || '').trim(), k = nm.toLowerCase();
       if(!map[k]){ map[k] = { name: nm, key: k, tasks: [], c: { done: 0, progress: 0, late: 0, todo: 0 }, projs: {} }; arr.push(map[k]); }
@@ -1530,8 +1630,8 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
         h += '<div class="wl-proj"><span class="mp-u">' + esc(p.name || 'Untitled') + '</span></div>';
         groupsOf(ts).forEach(function(g){
           g.tasks.forEach(function(t){
-            var s2 = statusOf(t), pd = parse(t.planDue);
-            h += '<div class="wl-row"><span class="nm"><span class="mp-u">' + esc(t.group) + '</span> › <span class="mp-u">' + esc(t.name) + '</span></span>' +
+            var s2 = t._st || statusOf(t), pd = t._step ? null : parse(t.planDue);
+            h += '<div class="wl-row"><span class="nm">' + (t._step ? '<span>Sales step</span> › <span>' + t.name + '</span>' : '<span class="mp-u">' + esc(t.group) + '</span> › <span class="mp-u">' + esc(t.name) + '</span>') + '</span>' +
               '<span class="pill ' + s2 + '"><i></i>' + STATUS_LABEL[s2] + '</span>' + (pd != null ? '<span class="dd">due ' + fmt(pd) + '</span>' : '') + '</div>';
           });
         });
@@ -1612,6 +1712,16 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
       '<div class="actions"><div class="r"><button type="button" class="btn" data-act="close-modal">Cancel</button><button type="submit" class="btn primary">Create copy</button></div></div></form></div>';
     var f = document.getElementById('f-dname'); if(f){ f.focus(); f.select(); }
   }
+  function openStageWhoModal(p, stage){
+    modalState = { type: 'stagewho', id: p.id, stage: stage };
+    var known = uniq(allTasks.map(function(t){ return t.incharge; }).concat(projects.reduce(function(a, x){ return a.concat(Object.keys(x.stageWho || {}).map(function(k){ return x.stageWho[k]; })); }, [])));
+    modalEl.innerHTML = '<div class="scrim" data-act="scrim"><form class="sheet narrow" id="whoForm" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">Person in charge</h2>' +
+      '<p class="note"><span>' + stageLabel(stage) + '</span></p>' +
+      '<datalist id="whoList">' + known.map(function(n){ return '<option value="' + esc(n) + '">'; }).join('') + '</datalist>' +
+      fld('f-swho', 'In charge', 'text', (p.stageWho || {})[stage] || '', { list: 'whoList' }) + '<p class="err" id="formErr" role="alert"></p>' +
+      '<div class="actions"><div class="r"><button type="button" class="btn" data-act="close-modal">Cancel</button><button type="submit" class="btn primary">Save</button></div></div></form></div>';
+    var f = document.getElementById('f-swho'); if(f){ f.focus(); f.select(); }
+  }
   function openRenameModal(group, pid){
     modalState = { type: 'rename', group: group, pid: pid || selectedId };
     modalEl.innerHTML = '<div class="scrim" data-act="scrim"><form class="sheet narrow" id="renameForm" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">Rename main process</h2>' +
@@ -1677,6 +1787,70 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     return h + '</section>';
   }
 
+  function stagesHTML(p){
+    var cur = stageIdx(p.stage), open = lsGet('projectlog.stages') !== 'closed';
+    var h = '<section class="subject" aria-label="Sales steps"><div class="sub-head"><h2>Sales steps</h2>' +
+      (cur >= 0 ? stagePill(p.stage) : '<span class="count">No step set yet</span>') +
+      '<div class="sp"><button class="btn" data-act="toggle-stages" aria-expanded="' + open + '">' + (open ? 'Hide' : 'Show') + '</button></div></div>';
+    if(open){
+      h += '<div class="stg-grid">';
+      STAGES.forEach(function(s2, i){
+        var state = cur < 0 ? 'next' : (i < cur ? 'done' : (i === cur ? 'current' : 'next'));
+        var files = stageFilesOf(p.id, s2[0]);
+        h += '<div class="stg ' + state + '"><div class="stg-h"><span class="stg-n">' + (i + 1) + '</span><b>' + s2[1] + '</b></div>' +
+          '<div class="stg-st">' + (state === 'done' ? 'Done' : (state === 'current' ? 'Current' : 'Upcoming')) + '</div>' +
+          '<div class="stg-w"><span>In charge</span>: ' + ((p.stageWho || {})[s2[0]] ? '<b class="mp-u">' + esc(p.stageWho[s2[0]]) + '</b>' : '<span>No one assigned</span>') + '</div><div class="stg-files">';
+        if(!files.length) h += '<span class="sub-empty">No files yet.</span>';
+        files.forEach(function(f){
+          var url = '/api/stage-files/' + esc(f.id), pdf = f.mime === 'application/pdf';
+          h += '<div class="stg-f"><a class="th" href="' + url + '" target="_blank" rel="noopener" aria-label="Open file">' + (pdf ? 'PDF' : '<img src="' + url + '" alt="" loading="lazy">') + '</a>' +
+            '<a class="fn mp-u" href="' + url + '" target="_blank" rel="noopener">' + esc(f.name || 'File') + '</a>' +
+            (canEdit ? '<button class="mini" data-act="stg-del" data-id="' + esc(f.id) + '">Remove</button>' : '') + '</div>';
+        });
+        h += '</div>';
+        if(canEdit){
+          h += '<div class="stg-act"><button class="mini" data-act="stg-who" data-stage="' + s2[0] + '">Assign</button>' + (state !== 'current' ? '<button class="mini" data-act="stg-current" data-stage="' + s2[0] + '">Set as current</button>' : '') +
+            '<button class="mini" data-act="stg-add" data-stage="' + s2[0] + '"' + (files.length >= MAX_STAGE_FILES ? ' disabled' : '') + '>Add photo or PDF</button></div>';
+        }
+        h += '</div>';
+      });
+      h += '</div>' + (canEdit ? '<input id="stgInput" type="file" accept="image/*,application/pdf" multiple hidden>' : '');
+    }
+    return h + '</section>';
+  }
+  var stgTarget = '';
+  function readB64(file){
+    return new Promise(function(resolve, reject){
+      var r = new FileReader();
+      r.onload = function(){ var d = String(r.result); resolve(d.slice(d.indexOf(',') + 1)); };
+      r.onerror = function(){ var e = new Error('Could not read that file.'); e.status = 400; reject(e); };
+      r.readAsDataURL(file);
+    });
+  }
+  function uploadStageFiles(stage, fileList){
+    var pid = selectedId;
+    var list = Array.prototype.slice.call(fileList || []).filter(function(f){ return /^image\//.test(f.type) || f.type === 'application/pdf' || /\.pdf$/i.test(f.name); });
+    if(!list.length){ toast('Choose a photo or a PDF file.', true); return; }
+    var room = MAX_STAGE_FILES - stageFilesOf(pid, stage).length;
+    if(room <= 0){ toast('Up to ' + MAX_STAGE_FILES + ' files in each step.', true); return; }
+    if(list.length > room){ list = list.slice(0, room); toast('Only ' + room + ' more fit. Adding the first ' + room + '.'); }
+    toast('Uploading ' + list.length + (list.length === 1 ? ' file…' : ' files…'));
+    run(function(){
+      var chain = Promise.resolve();
+      list.forEach(function(f){
+        chain = chain.then(function(){
+          var pdf = f.type === 'application/pdf' || /\.pdf$/i.test(f.name);
+          if(pdf){
+            if(f.size * 4 / 3 > 1750000){ var e = new Error('That PDF is too large. The limit is about 1.3 MB. Compress it or split it first.'); e.status = 400; throw e; }
+            return readB64(f).then(function(b64){ return api('POST', '/api/projects/' + pid + '/stage-files', { stage: stage, mime: 'application/pdf', name: f.name, data: b64 }); });
+          }
+          return compress(f).then(function(b64){ return api('POST', '/api/projects/' + pid + '/stage-files', { stage: stage, mime: 'image/jpeg', name: f.name.replace(/\.[^.]+$/, '') + '.jpg', data: b64 }); });
+        });
+      });
+      return chain.catch(function(e){ return load(true).then(function(){ throw e; }); });
+    }, list.length === 1 ? 'File added' : list.length + ' files added');
+  }
+
   function helpHTML(){
     return '<details class="help"><summary>How to edit this log</summary><ul>' +
       '<li><b>Find your way around:</b> Switch between Schedule and Timeline at the top. Use the filters to narrow by client, project, person, process, status or time, and move the calendar with the slider, the buttons or by dragging.</li>' +
@@ -1684,6 +1858,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
       '<li><b>Edit a project:</b> Edit project changes the name, client, PO number and subject notes. Delete project is at the bottom of that window.</li>' +
       '<li><b>Delete projects:</b> Manage projects lists every project with its status. Tick one or several, then press Delete selected and confirm.</li>' +
       '<li><b>Add a new project:</b> New project at the top. Duplicate copies the current project\'s processes and people in charge as a starting point, without actual dates.</li>' +
+      '<li><b>Sales steps:</b> Each project moves through Visit customer / RFQ, Quotation, PO and Invoice. Press Set as current on a step when the project reaches it. Assign sets who is in charge of that step. Add photo or PDF attaches a file to that step, and Remove deletes it.</li>' +
       '<li><b>Subject images:</b> Add images uploads photos or drawings. Edit on an image changes its caption or order, or deletes it.</li>' +
       '<li><b>Processes:</b> click a process name to edit it or delete it. The arrows move it up or down within its main process. Rename changes a main process name, and + Add adds a sub process to it.</li>' +
       '<li><b>Logging progress:</b> use the status dropdown on each process (Not started, In progress, Done). It fills in the actual dates for you, and you can still change them by clicking the process name. Overdue is automatic: it shows when the due date has passed and the process is not done.</li>' +
@@ -1775,7 +1950,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     e.preventDefault();
     var name = val('f-pname');
     if(!name){ setErr('Enter a project name.'); return; }
-    var data = { name: name, client: val('f-client'), po: val('f-po'), notes: val('f-notes') };
+    var data = { name: name, client: val('f-client'), po: val('f-po'), notes: val('f-notes'), stage: val('f-stage') };
     var existing = modalState && modalState.id;
     var tpl = document.getElementById('f-tpl');
     var useTpl = tpl && tpl.checked;
@@ -1874,6 +2049,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     if(act === 'retry'){ loadFailed = false; render(); load(true); return; }
     if(act === 'unlock'){ openUnlockModal(); return; }
     if(act === 'lock'){ lock(); toast('Editing locked'); return; }
+    if(act === 'toggle-stages'){ lsSet('projectlog.stages', lsGet('projectlog.stages') === 'closed' ? 'open' : 'closed'); render(); return; }
     if(act === 'toggle-subject'){ lsSet('projectlog.subject', lsGet('projectlog.subject') === 'closed' ? 'open' : 'closed'); render(); return; }
     if(act === 'open-image'){ openLightbox(el.dataset.id); return; }
     if(act === 'lb-bg'){ if(e.target === el) closeModal(); return; }
@@ -1898,7 +2074,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     }
     if(act === 'export-xlsx'){ exportExcel(el.dataset.scope === 'all'); return; }
     if(act === 'cal-today'){ var tw = appEl.querySelector('.sched-wrap'); if(tw) scrollToToday(tw, true); return; }
-    if(act === 'reset-filters'){ filters = { q: '', client: '', project: '', who: '', group: '', status: '', pstatus: '', time: '', from: '', to: '' }; needScroll = true; render(); return; }
+    if(act === 'reset-filters'){ filters = { q: '', client: '', project: '', who: '', group: '', status: '', pstatus: '', stage: '', time: '', from: '', to: '' }; needScroll = true; render(); return; }
     if(act === 'open-project'){ selectProject(el.dataset.id); window.scrollTo(0, 0); return; }
     if(act === 'open-workload'){ openWorkloadModal(); return; }
     if(act === 'wl-toggle-all'){
@@ -1908,6 +2084,10 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     }
     if(!canEdit) return;
     if(act === 'manage-projects'){ openManageModal(); return; }
+    if(act === 'stg-current'){ var sp = currentProject(); var sg = el.dataset.stage; if(sp) run(function(){ return api('PATCH', '/api/projects/' + sp.id, { stage: sg }); }, 'Step updated'); return; }
+    if(act === 'stg-who'){ var wp = currentProject(); if(wp) openStageWhoModal(wp, el.dataset.stage); return; }
+    if(act === 'stg-add'){ stgTarget = el.dataset.stage; var si = document.getElementById('stgInput'); if(si) si.click(); return; }
+    if(act === 'stg-del'){ var fid2 = el.dataset.id; armDelete(el, 'Remove', function(){ run(function(){ return api('DELETE', '/api/stage-files/' + fid2); }, 'File removed'); }); return; }
     if(act === 'mp-del-one'){
       var oid = el.dataset.id;
       armDelete(el, 'Delete', function(){ deleteProjects([oid]); });
@@ -1961,6 +2141,15 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     else if(e.target.id === 'unlockForm') submitUnlock(e);
     else if(e.target.id === 'dupForm') submitDuplicate(e);
     else if(e.target.id === 'renameForm') submitRename(e);
+    else if(e.target.id === 'whoForm'){
+      e.preventDefault();
+      var wst = modalState && modalState.stage, wpid = modalState && modalState.id, wproj = projects.filter(function(x){ return x.id === wpid; })[0];
+      if(!wproj) return;
+      var nw = {}; Object.keys(wproj.stageWho || {}).forEach(function(k){ nw[k] = wproj.stageWho[k]; });
+      nw[wst] = val('f-swho');
+      closeModal();
+      run(function(){ return api('PATCH', '/api/projects/' + wpid, { stageWho: nw }); }, 'Details saved');
+    }
     else if(e.target.id === 'imgForm') submitImage(e);
   });
   document.addEventListener('change', function(e){
@@ -1996,6 +2185,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
       var stt = tasks.filter(function(x){ return x.id === e.target.dataset.id; })[0];
       if(stt) quick(stt.id, statusPatch(stt, e.target.value), STATUS_MSG[e.target.value]);
     }
+    else if(e.target.id === 'stgInput'){ var sf = e.target.files; uploadStageFiles(stgTarget, sf); e.target.value = ''; }
     else if(e.target.id === 'imgInput'){ var fl = e.target.files; uploadImages(fl); e.target.value = ''; }
   });
   document.addEventListener('input', function(e){
