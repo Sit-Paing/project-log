@@ -130,6 +130,8 @@ details.wl[open] .wl-name:before{content:'▾'}
 .wl-row{display:flex;gap:4px 10px;align-items:center;flex-wrap:wrap;padding:5px 0 5px 10px;border-bottom:1px dotted var(--line-soft)}
 .wl-row .nm{flex:1 1 200px;min-width:0;overflow-wrap:anywhere}
 .wl-row .dd{color:var(--muted);font-size:12px}
+.pj-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px}
+.pill.stage.none{color:var(--muted);border-style:dashed}
 .pill.stage{background:var(--surface-2);color:var(--ink);border:1px solid var(--line)}
 .stg-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:0 14px 14px}
 @media (max-width:900px){.stg-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -936,7 +938,10 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
   var MAX_STAGE_FILES = 6;
   function stageIdx(id){ for(var i = 0; i < STAGES.length; i++) if(STAGES[i][0] === id) return i; return -1; }
   function stageLabel(id){ var i = stageIdx(id); return i < 0 ? '' : STAGES[i][1]; }
-  function stagePill(id){ return stageIdx(id) < 0 ? '' : '<span class="pill stage"><i></i>' + stageLabel(id) + '</span>'; }
+  function stagePill(id, always){
+    if(stageIdx(id) < 0) return always ? '<span class="pill stage none"><i></i><span>Sales step</span>: <span>No step yet</span></span>' : '';
+    return '<span class="pill stage"><i></i><span>Sales step</span>: <span>' + stageLabel(id) + '</span></span>';
+  }
   function stageFilesOf(pid, st){ return allStageFiles.filter(function(f){ return f.projectId === pid && f.stage === st; }); }
   function projPill(pid){ var k = projStatus(pid); return '<span class="pill ' + k + '"><i></i>' + PSTATUS_LABEL[k] + '</span>'; }
 
@@ -1169,7 +1174,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
         '<div><dt>Clients</dt><dd class="mono">' + Object.keys(cls).length + '</dd></div>' +
         '<div><dt>Planned</dt><dd class="mono">' + esc(sched) + '</dd></div></dl></div>' + (canEdit ? '<div class="bar-actions"><button class="btn" data-act="manage-projects">Manage projects</button></div>' : '') + '</section>';
     } else {
-      html += '<section class="ph"><div class="ph-main"><div class="ph-title"><h1>' + esc(p.name || 'Untitled project') + '</h1>' + projPill(p.id) + stagePill(p.stage) + '</div>' +
+      html += '<section class="ph"><div class="ph-main"><div class="ph-title"><h1>' + esc(p.name || 'Untitled project') + '</h1>' + projPill(p.id) + stagePill(p.stage, true) + '</div>' +
         '<dl class="meta"><div><dt>Client</dt><dd>' + (esc(p.client) || '—') + '</dd></div>' +
         '<div><dt>PO No.</dt><dd class="mono">' + (esc(p.po) || '—') + '</dd></div>' +
         '<div><dt>Planned</dt><dd class="mono">' + esc(sched) + '</dd></div></dl></div>' +
@@ -1482,7 +1487,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
       if(b.p){
         var bd = b.tasks.filter(function(t){ return statusOf(t) === 'done'; }).length;
         h += '<tr class="grp prow"><th class="gh pj" colspan="3" scope="rowgroup"><div class="pj-in"><div class="pj-t"><span class="pj-name">' + esc(b.p.name || 'Untitled') + '</span>' +
-          '<span class="pj-sub">' + esc(b.p.client || 'No client') + (b.p.po ? ' · PO ' + esc(b.p.po) : '') + '</span></div>' +
+          '<span class="pj-sub">' + esc(b.p.client || 'No client') + (b.p.po ? ' · PO ' + esc(b.p.po) : '') + '</span><span class="pj-tags">' + projPill(b.p.id) + stagePill(b.p.stage) + '</span></div>' +
           '<button class="mini" data-act="open-project" data-id="' + esc(b.p.id) + '">Open</button></div></th>' +
           '<td class="gfill" colspan="' + (3 + N) + '">' + bd + ' of ' + b.tasks.length + ' done</td></tr>';
       }
