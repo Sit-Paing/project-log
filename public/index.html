@@ -1388,11 +1388,12 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
           else if(dw === 0 || dw === 6) cell.fill = xlFill('FFF0F3EF');
         }
       }
-      var lastP = null;
+      var lastP = null, curSubj = null;
+      function endSubj(){ if(curSubj) placeSubjectImages(tl, wb, curSubj.slots, curSubj.start); curSubj = null; }
       rows.forEach(function(r){
         if(r.p.id !== lastP){
-          lastP = r.p.id;
-          if(subjImgs[r.p.id]) addSubjectRows(tl, r.p, subjImgs[r.p.id], wb, HEAD, LEAD);
+          endSubj(); lastP = r.p.id;
+          if(subjImgs[r.p.id]){ addSubjectHeader(tl, r.p, subjImgs[r.p.id], HEAD, LEAD); curSubj = { slots: subjImgs[r.p.id], start: tl.lastRow.number + 1 }; }
         }
         var t = r.t, ps = parse(t.planStart), pd = parse(t.planDue), as = parse(t.actStart), ae = parse(t.actEnd);
         var pS = ps != null ? ps : pd, pE = pd != null ? pd : ps, aE = as != null ? (ae != null ? ae : Math.max(as, TODAY)) : null;
@@ -1404,7 +1405,9 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
         b.getCell(6).fill = xlFill('FFE6A92B'); b.getCell(6).font = { bold: true, size: 9, color: { argb: 'FF2A1E00' } };
         [a, b].forEach(function(row){ row.getCell(7).numFmt = 'd mmm'; row.getCell(8).numFmt = 'd mmm'; row.getCell(7).alignment = { horizontal: 'left' }; row.getCell(8).alignment = { horizontal: 'left' }; });
         bars(a, pS, pE, 'FF2C7A4B'); bars(b, as, aE, 'FFE6A92B');
+        a.height = 15; b.height = 15;
       });
+      endSubj();
       /* sheet 3: one line per project with its sales step and the files attached to each step */
       var pj = wb.addWorksheet(tr('Projects'), { views: [{ state: 'frozen', ySplit: 1 }] });
       pj.columns = [{ header: tr('Project'), width: 30 }, { header: tr('Client'), width: 20 }, { header: tr('PO No.'), width: 12 },
@@ -1476,28 +1479,39 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     });
     return Promise.all(jobs).then(function(){ return out; });
   }
-  /* On the Timeline sheet, above a project's processes: a Subject header, the notes, then one picture per row in column A. */
-  function addSubjectRows(tl, p2, slots, wb, HEAD, LEAD){
-    var MAXW = 280, MAXH = 210, hr = tl.addRow(['', tr('Subject') + ' – ' + p2.name]);
+  /* Timeline sheet, per project: one header line (title, notes, captions), then the pictures float in column A beside the project's own process rows. */
+  var XL_ROW_PX = 20;   /* every Timeline row below the header is 15 pt = 20 px high */
+  function addSubjectHeader(tl, p2, slots, HEAD, LEAD){
+    var hr = tl.addRow(['', tr('Subject') + ' – ' + p2.name]);
     tl.mergeCells(hr.number, 2, hr.number, LEAD);
     var hc = tl.getCell(hr.number, 2); hc.font = HEAD.font; hc.fill = HEAD.fill; hc.alignment = { vertical: 'middle' };
     hr.height = 22;
-    if(p2.notes){
-      var nr = tl.addRow(['', p2.notes]);
+    var lines = [];
+    if(p2.notes) lines.push(p2.notes);
+    var caps = slots.map(function(sl, i){ return sl.x ? (sl.im.caption ? (i + 1) + ') ' + sl.im.caption : '') : (i + 1) + ') ' + tr('Image unavailable'); }).filter(Boolean);
+    if(caps.length) lines.push(caps.join('    '));
+    if(lines.length){
+      var txt = lines.join('\n'), nr = tl.addRow(['', txt]);
       tl.mergeCells(nr.number, 2, nr.number, LEAD);
       nr.getCell(2).alignment = { vertical: 'top', wrapText: true };
-      nr.height = Math.min(300, 15 * Math.max(1, Math.ceil(p2.notes.length / 110) + (p2.notes.split('\n').length - 1)));
+      nr.height = Math.min(300, 15 * Math.max(1, Math.ceil(txt.length / 110) + (txt.split('\n').length - 1)));
     }
+  }
+  function placeSubjectImages(tl, wb, slots, startRow){
+    var MAXW = 280, MAXH = 210, GAP = 6, items = [], total = 0;
     slots.forEach(function(sl){
-      var row = tl.addRow(['']);
-      tl.mergeCells(row.number, 2, row.number, LEAD);
-      var cap = tl.getCell(row.number, 2); cap.alignment = { vertical: 'top', wrapText: true }; cap.font = { italic: true };
-      if(!sl.x){ cap.value = tr('Image unavailable') + (sl.im.caption ? ': ' + sl.im.caption : ''); row.height = 20; return; }
-      cap.value = sl.im.caption || '';
+      if(!sl.x) return;
       var k = Math.min(MAXW / sl.x.w, MAXH / sl.x.h, 1), w = Math.round(sl.x.w * k), h = Math.round(sl.x.h * k);
-      row.height = Math.max(20, h * 0.75 + 6);
-      var id = wb.addImage({ buffer: sl.x.buffer, extension: sl.x.extension });
-      tl.addImage(id, { tl: { col: 0.03, row: row.number - 1 + 0.03 }, ext: { width: w, height: h }, editAs: 'oneCell' });
+      items.push({ sl: sl, w: w, h: h }); total += h + GAP;
+    });
+    if(!items.length) return;
+    var block = (tl.lastRow.number - startRow + 1) * XL_ROW_PX;
+    for(var pad = Math.ceil((total - block) / XL_ROW_PX); pad > 0; pad--){ var pr = tl.addRow([]); pr.height = 15; }   /* room so pictures never run into the next project */
+    var y = 2;
+    items.forEach(function(it){
+      var id = wb.addImage({ buffer: it.sl.x.buffer, extension: it.sl.x.extension });
+      tl.addImage(id, { tl: { nativeCol: 0, nativeColOff: 3 * 9525, nativeRow: startRow - 1 + Math.floor(y / XL_ROW_PX), nativeRowOff: (y % XL_ROW_PX) * 9525 }, ext: { width: it.w, height: it.h }, editAs: 'oneCell' });
+      y += it.h + GAP;
     });
   }
 
