@@ -491,6 +491,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     'Duplicate': ['ทำสำเนา', 'ကူးယူရန်'],
     'Progress': ['ความคืบหน้า', 'တိုးတက်မှု'],
     'Subject': ['หัวข้องาน', 'အကြောင်းအရာ'],
+    'Image unavailable': ['ไม่สามารถโหลดรูปภาพได้', 'ပုံ မရနိုင်ပါ'],
     'Add images': ['เพิ่มรูปภาพ', 'ပုံများ ထည့်ရန်'],
     'Hide': ['ซ่อน', 'ဖျောက်ရန်'],
     'Show': ['แสดง', 'ပြရန်'],
@@ -1426,9 +1427,12 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
           r2.getCell(5).font = { color: { argb: 'FF0563C1' }, underline: true };
         });
       }
-      tl.orderNo = 0; ws.orderNo = 1; pj.orderNo = 2; if(fs) fs.orderNo = 3;   /* Timeline, Processes, Projects, Files */
+      /* sheet 5: subject notes and pictures, only for projects that have any */
+      var withSubject = shown.filter(function(p2){ return allImages.some(function(im){ return im.projectId === p2.id; }); });
+      tl.orderNo = 0; ws.orderNo = 1; pj.orderNo = 2; if(fs) fs.orderNo = 3;   /* Timeline, Processes, Projects, Files, Subject */
       wb.views = [{ activeTab: 0 }];
-      return wb.xlsx.writeBuffer();
+      if(!withSubject.length) return wb.xlsx.writeBuffer();
+      return addSubjectSheet(wb, withSubject, HEAD).then(function(sub){ sub.orderNo = fs ? 4 : 3; return wb.xlsx.writeBuffer(); });
     }).then(function(buf){
       var blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       var a = document.createElement('a');
@@ -1437,6 +1441,67 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
       setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1500);
       toast('Excel file downloaded');
     }).catch(function(){ toast('Could not create the Excel file. Check your connection and try again.', true); });
+  }
+
+  /* Fetch one subject image and return { buffer, extension, w, h } ready for ExcelJS (webp and others become jpeg). */
+  function xlImage(im){
+    return fetch('/api/images/' + encodeURIComponent(im.id)).then(function(r){
+      if(!r.ok) throw new Error('image');
+      return r.blob();
+    }).then(function(blob){
+      return createImageBitmap(blob).then(function(bmp){
+        var ext = { 'image/jpeg': 'jpeg', 'image/png': 'png', 'image/gif': 'gif' }[blob.type];
+        if(ext) return blob.arrayBuffer().then(function(buf){ return { buffer: buf, extension: ext, w: bmp.width, h: bmp.height }; });
+        var cv = document.createElement('canvas'); cv.width = bmp.width; cv.height = bmp.height;
+        var cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height); cx.drawImage(bmp, 0, 0);
+        return new Promise(function(res, rej){ cv.toBlob(function(b){ b ? res(b) : rej(new Error('image')); }, 'image/jpeg', 0.9); })
+          .then(function(b){ return b.arrayBuffer(); })
+          .then(function(buf){ return { buffer: buf, extension: 'jpeg', w: bmp.width, h: bmp.height }; });
+      });
+    });
+  }
+  /* "Subject" sheet: per project a title row, the subject notes, then its pictures (3 across) with captions. */
+  function addSubjectSheet(wb, plist, HEAD){
+    var sh = wb.addWorksheet(tr('Subject')), PER = 3, BOX_W = 320, BOX_H = 240, BOX_PT = BOX_H * 0.75 + 6;
+    for(var c = 1; c <= PER; c++) sh.getColumn(c).width = 45;   /* about 320 px */
+    var jobs = [];
+    plist.forEach(function(p2){
+      var ims = allImages.filter(function(im){ return im.projectId === p2.id; });
+      ims.forEach(function(im){ jobs.push(xlImage(im).then(function(x){ return x; }, function(){ return null; })); });
+    });
+    return Promise.all(jobs).then(function(loaded){
+      var k = 0, r = 1;
+      plist.forEach(function(p2){
+        var ims = allImages.filter(function(im){ return im.projectId === p2.id; });
+        sh.mergeCells(r, 1, r, PER);
+        var h = sh.getCell(r, 1); h.value = p2.name + (p2.client ? '  ·  ' + p2.client : '') + (p2.po ? '  ·  PO ' + p2.po : '');
+        h.font = HEAD.font; h.fill = HEAD.fill; h.alignment = { vertical: 'middle' };
+        sh.getRow(r).height = 24; r++;
+        if(p2.notes){
+          sh.mergeCells(r, 1, r, PER);
+          var nc = sh.getCell(r, 1); nc.value = p2.notes; nc.alignment = { vertical: 'top', wrapText: true };
+          sh.getRow(r).height = Math.min(300, 15 * Math.max(1, Math.ceil(p2.notes.length / 120) + (p2.notes.split('\n').length - 1)));
+          r++;
+        }
+        for(var i = 0; i < ims.length; i += PER){
+          var rowIms = ims.slice(i, i + PER);
+          sh.getRow(r).height = BOX_PT; sh.getRow(r + 1).height = 30;
+          rowIms.forEach(function(im, j){
+            var x = loaded[k++];
+            var cap = sh.getCell(r + 1, j + 1);
+            cap.alignment = { vertical: 'top', wrapText: true }; cap.font = { italic: true, size: 9 };
+            if(!x){ cap.value = tr('Image unavailable') + (im.caption ? ': ' + im.caption : ''); return; }
+            cap.value = im.caption || '';
+            var s = Math.min(BOX_W / x.w, BOX_H / x.h, 1);
+            var id = wb.addImage({ buffer: x.buffer, extension: x.extension });
+            sh.addImage(id, { tl: { col: j + 0.03, row: r - 1 + 0.03 }, ext: { width: Math.round(x.w * s), height: Math.round(x.h * s) }, editAs: 'oneCell' });
+          });
+          r += 2;
+        }
+        r++;   /* blank line between projects */
+      });
+      return sh;
+    });
   }
 
   function barCells(r0, r1, s, e, kind, live, tip){
