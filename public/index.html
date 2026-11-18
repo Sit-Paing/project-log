@@ -1353,12 +1353,12 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
       ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 14 } };
 
       /* sheet 2: plan and actual bars over the calendar, like the paper schedule */
-      var rg = everything ? rangeOf(list) : calRange(list), r0 = rg[0], r1 = Math.min(rg[1], rg[0] + 730), N = r1 - r0 + 1, LEAD = 7;
+      var rg = everything ? rangeOf(list) : calRange(list), r0 = rg[0], r1 = Math.min(rg[1], rg[0] + 730), N = r1 - r0 + 1, LEAD = 8;   /* column A holds only subject images; the rest starts in B */
       var tl = wb.addWorksheet(tr('Timeline'), { views: [{ state: 'frozen', xSplit: LEAD, ySplit: 3 }] });
-      var widths = [40, 20, 24, 16, 9, 12, 12];
+      var widths = [40, 30, 20, 24, 16, 9, 12, 12];
       for(var c = 1; c <= LEAD; c++) tl.getColumn(c).width = widths[c - 1];
       for(var n = r0; n <= r1; n++) tl.getColumn(LEAD + 1 + n - r0).width = 3.4;
-      var lead = [tr('Project'), tr('Main process'), tr('Sub process'), tr('In charge'), '', tr('Start'), tr('Due')];
+      var lead = ['', tr('Project'), tr('Main process'), tr('Sub process'), tr('In charge'), '', tr('Start'), tr('Due')];
       lead.forEach(function(v, i){ var cell = tl.getCell(3, i + 1); cell.value = v; cell.font = HEAD.font; cell.fill = HEAD.fill; });
       var m0 = null;
       for(n = r0; n <= r1; n++){
@@ -1396,13 +1396,13 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
         }
         var t = r.t, ps = parse(t.planStart), pd = parse(t.planDue), as = parse(t.actStart), ae = parse(t.actEnd);
         var pS = ps != null ? ps : pd, pE = pd != null ? pd : ps, aE = as != null ? (ae != null ? ae : Math.max(as, TODAY)) : null;
-        var a = tl.addRow([r.p.name, t.group, t.name, t.incharge, tr('PLAN'), xlDate(ps), xlDate(pd)]);
-        var b = tl.addRow(['', '', '', '', tr('ACTUAL'), xlDate(as), ae != null ? xlDate(ae) : (as != null ? tr('ongoing') : '')]);
-        for(var k = 1; k <= 4; k++) tl.mergeCells(a.number, k, b.number, k);
-        for(k = 1; k <= 4; k++) tl.getCell(a.number, k).alignment = { vertical: 'middle', wrapText: true };
-        a.getCell(5).fill = xlFill('FF2C7A4B'); a.getCell(5).font = { bold: true, size: 9, color: { argb: 'FFFFFFFF' } };
-        b.getCell(5).fill = xlFill('FFE6A92B'); b.getCell(5).font = { bold: true, size: 9, color: { argb: 'FF2A1E00' } };
-        [a, b].forEach(function(row){ row.getCell(6).numFmt = 'd mmm'; row.getCell(7).numFmt = 'd mmm'; row.getCell(6).alignment = { horizontal: 'left' }; row.getCell(7).alignment = { horizontal: 'left' }; });
+        var a = tl.addRow(['', r.p.name, t.group, t.name, t.incharge, tr('PLAN'), xlDate(ps), xlDate(pd)]);
+        var b = tl.addRow(['', '', '', '', '', tr('ACTUAL'), xlDate(as), ae != null ? xlDate(ae) : (as != null ? tr('ongoing') : '')]);
+        for(var k = 2; k <= 5; k++) tl.mergeCells(a.number, k, b.number, k);
+        for(k = 2; k <= 5; k++) tl.getCell(a.number, k).alignment = { vertical: 'middle', wrapText: true };
+        a.getCell(6).fill = xlFill('FF2C7A4B'); a.getCell(6).font = { bold: true, size: 9, color: { argb: 'FFFFFFFF' } };
+        b.getCell(6).fill = xlFill('FFE6A92B'); b.getCell(6).font = { bold: true, size: 9, color: { argb: 'FF2A1E00' } };
+        [a, b].forEach(function(row){ row.getCell(7).numFmt = 'd mmm'; row.getCell(8).numFmt = 'd mmm'; row.getCell(7).alignment = { horizontal: 'left' }; row.getCell(8).alignment = { horizontal: 'left' }; });
         bars(a, pS, pE, 'FF2C7A4B'); bars(b, as, aE, 'FFE6A92B');
       });
       /* sheet 3: one line per project with its sales step and the files attached to each step */
@@ -1478,14 +1478,14 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
   }
   /* On the Timeline sheet, above a project's processes: a Subject header, the notes, then one picture per row in column A. */
   function addSubjectRows(tl, p2, slots, wb, HEAD, LEAD){
-    var MAXW = 280, MAXH = 210, hr = tl.addRow([tr('Subject') + ' – ' + p2.name]);
-    tl.mergeCells(hr.number, 1, hr.number, LEAD);
-    var hc = tl.getCell(hr.number, 1); hc.font = HEAD.font; hc.fill = HEAD.fill; hc.alignment = { vertical: 'middle' };
+    var MAXW = 280, MAXH = 210, hr = tl.addRow(['', tr('Subject') + ' – ' + p2.name]);
+    tl.mergeCells(hr.number, 2, hr.number, LEAD);
+    var hc = tl.getCell(hr.number, 2); hc.font = HEAD.font; hc.fill = HEAD.fill; hc.alignment = { vertical: 'middle' };
     hr.height = 22;
     if(p2.notes){
-      var nr = tl.addRow([p2.notes]);
-      tl.mergeCells(nr.number, 1, nr.number, LEAD);
-      nr.getCell(1).alignment = { vertical: 'top', wrapText: true };
+      var nr = tl.addRow(['', p2.notes]);
+      tl.mergeCells(nr.number, 2, nr.number, LEAD);
+      nr.getCell(2).alignment = { vertical: 'top', wrapText: true };
       nr.height = Math.min(300, 15 * Math.max(1, Math.ceil(p2.notes.length / 110) + (p2.notes.split('\n').length - 1)));
     }
     slots.forEach(function(sl){
