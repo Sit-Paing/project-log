@@ -235,6 +235,15 @@ tr.grp td.gfill{background:var(--surface-2);font-size:11.5px;color:var(--muted);
 .scrim{position:fixed;inset:0;background:rgba(8,12,10,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50;overflow:auto}
 .sheet{background:var(--surface);border:1px solid var(--line);border-radius:10px;width:min(580px,100%);max-height:100%;overflow:auto;padding:20px}
 .sheet.narrow{width:min(400px,100%)}
+.ps-box{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font:inherit;background:var(--surface)}
+.ps-list{display:flex;flex-direction:column;gap:6px;margin-top:12px;max-height:55vh;overflow:auto}
+.ps-item{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;text-align:left;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);cursor:pointer;font:inherit;color:var(--ink)}
+.ps-item:hover,.ps-item:focus-visible{background:var(--surface-2);border-color:var(--accent);outline:none}
+.ps-item .ps-main{min-width:0;display:flex;flex-direction:column}
+.ps-item .ps-name{font-weight:600;overflow-wrap:anywhere}
+.ps-item .ps-meta{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.ps-item mark{background:var(--prog-wash);color:inherit;border-radius:2px;padding:0 1px}
+.ps-empty{margin:14px 0 4px;color:var(--muted);text-align:center}
 .sheet h2{margin:0 0 14px;font-family:var(--font-display);font-size:26px;font-weight:600}
 .sheet p.note{margin:0 0 12px;color:var(--muted)}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -505,6 +514,9 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     'View image': ['ดูรูปภาพ', 'ပုံကြည့်ရန်'],
     'Filters': ['ตัวกรอง', 'စစ်ထုတ်မှုများ'],
     'Search': ['ค้นหา', 'ရှာဖွေရန်'],
+    'Search projects': ['ค้นหาโปรเจกต์', 'ပရောဂျက် ရှာဖွေရန်'],
+    'Type a project name': ['พิมพ์ชื่อโปรเจกต์', 'ပရောဂျက်အမည် ရိုက်ထည့်ပါ'],
+    'No project matches': ['ไม่พบโปรเจกต์ที่ตรงกัน', 'ကိုက်ညီသော ပရောဂျက် မရှိပါ'],
     'Project, client, PO, process, person': ['โปรเจกต์ ลูกค้า PO ขั้นตอน ผู้รับผิดชอบ', 'ပရောဂျက်၊ ဖောက်သည်၊ PO၊ လုပ်ငန်းစဉ်၊ လူ'],
     'In charge': ['ผู้รับผิดชอบ', 'တာဝန်ခံ'],
     'Main process': ['ขั้นตอนหลัก', 'အဓိက လုပ်ငန်းစဉ်'],
@@ -1128,6 +1140,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
         if(filters.client && (p.client || '') !== filters.client && p.id !== selectedId) return;
         opts += '<option value="' + esc(p.id) + '"' + (p.id === selectedId ? ' selected' : '') + '>' + esc(p.name || 'Untitled') + (p.po ? ' · PO ' + esc(p.po) : '') + '</option>';
       });
+      topBar += '<button class="btn" data-act="search-projects" title="Search projects" aria-label="Search projects"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg>Search</button>';
       topBar += '<label class="switch"><span class="sr">Project</span><select id="projectSelect">' + opts + '</select></label>';
     }
     topBar += '<label class="lang"><span class="sr">Language</span><select id="langSel"><option value="en"' + (lang === 'en' ? ' selected' : '') + '>English</option><option value="th"' + (lang === 'th' ? ' selected' : '') + '>ไทย</option><option value="my"' + (lang === 'my' ? ' selected' : '') + '>မြန်မာ</option></select></label>';
@@ -1782,6 +1795,41 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
   function chk(id, label, on){
     return '<div class="fld full check"><input id="' + id + '" type="checkbox"' + (on ? ' checked' : '') + '><label for="' + id + '" style="text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink);font-weight:500">' + label + '</label></div>';
   }
+  /* Search projects by name: a button in the top bar opens this finder. */
+  function searchMatches(q){
+    var words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    return projects.filter(function(p2){
+      var nm = (p2.name || 'Untitled').toLowerCase();
+      return words.every(function(w){ return nm.indexOf(w) >= 0; });
+    });
+  }
+  function markName(name, q){
+    var words = q.trim().toLowerCase().split(/\s+/).filter(Boolean), low = name.toLowerCase(), hit = [];
+    words.forEach(function(w){ for(var i = low.indexOf(w); i >= 0; i = low.indexOf(w, i + w.length)) hit.push([i, i + w.length]); });
+    hit.sort(function(a, b){ return a[0] - b[0]; });
+    var out = '', pos = 0;
+    hit.forEach(function(h){ if(h[1] <= pos) return; var from = Math.max(h[0], pos); out += esc(name.slice(pos, from)) + '<mark>' + esc(name.slice(from, h[1])) + '</mark>'; pos = h[1]; });
+    return out + esc(name.slice(pos));
+  }
+  function drawSearchResults(q){
+    var box = document.getElementById('psResults'); if(!box) return;
+    var list = searchMatches(q);
+    if(!list.length){ box.innerHTML = '<p class="ps-empty">No project matches</p>'; return; }
+    box.innerHTML = list.map(function(p2){
+      var meta = [p2.client, p2.po ? 'PO ' + p2.po : ''].filter(Boolean).join(' · ');
+      return '<button type="button" class="ps-item" data-act="search-pick" data-id="' + esc(p2.id) + '"><span class="ps-main"><span class="ps-name pname">' + markName(p2.name || 'Untitled', q) + '</span>' +
+        (meta ? '<span class="ps-meta pname">' + esc(meta) + '</span>' : '') + '</span>' + projPill(p2.id) + '</button>';
+    }).join('');
+  }
+  function openSearchModal(){
+    modalState = { type: 'search' };
+    modalEl.innerHTML = '<div class="scrim" data-act="scrim"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">Search projects</h2>' +
+      '<input id="f-psearch" class="ps-box" type="search" placeholder="Type a project name" autocomplete="off" aria-label="Search projects">' +
+      '<div class="ps-list" id="psResults"></div>' +
+      '<div class="actions"><div class="r"><button type="button" class="btn" data-act="close-modal">Close</button></div></div></div></div>';
+    drawSearchResults('');
+    var f = document.getElementById('f-psearch'); if(f) f.focus();
+  }
   function openDuplicateModal(p){
     modalState = { type: 'duplicate', id: p.id };
     modalEl.innerHTML = '<div class="scrim" data-act="scrim"><form class="sheet" id="dupForm" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">Duplicate project</h2>' +
@@ -2158,6 +2206,8 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     if(act === 'reset-filters'){ filters = { q: '', client: '', project: '', who: '', group: '', status: '', pstatus: '', stage: '', time: '', from: '', to: '' }; needScroll = true; render(); return; }
     if(act === 'open-project'){ selectProject(el.dataset.id); window.scrollTo(0, 0); return; }
     if(act === 'open-workload'){ openWorkloadModal(); return; }
+    if(act === 'search-projects'){ openSearchModal(); return; }
+    if(act === 'search-pick'){ closeModal(); selectProject(el.dataset.id); window.scrollTo(0, 0); return; }
     if(act === 'wl-toggle-all'){
       var ds = modalEl.querySelectorAll('details.wl'), anyClosed = Array.prototype.some.call(ds, function(d){ return !d.open; });
       Array.prototype.forEach.call(ds, function(d){ d.open = anyClosed; });
@@ -2273,6 +2323,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     var tid = e.target.id;
     if(tid === 'calSlider'){ var w = appEl.querySelector('.sched-wrap'); if(w) w.scrollLeft = +e.target.value; }
     else if(tid === 'flt-q'){ filters.q = e.target.value; render(); }
+    else if(tid === 'f-psearch'){ drawSearchResults(e.target.value); }
   });
   document.addEventListener('keydown', function(e){
     if(e.target && e.target.id === 'calSlider' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')){
@@ -2282,6 +2333,13 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     }
     if(!modalState) return;
     if(e.key === 'Escape'){ closeModal(); return; }
+    if(modalState.type === 'search'){
+      var items = modalEl.querySelectorAll('.ps-item'), cur = Array.prototype.indexOf.call(items, document.activeElement);
+      if(e.key === 'Enter' && e.target.id === 'f-psearch' && items.length){ e.preventDefault(); items[0].click(); }
+      else if(e.key === 'ArrowDown' && items.length){ e.preventDefault(); items[Math.min(cur + 1, items.length - 1)].focus(); }
+      else if(e.key === 'ArrowUp'){ e.preventDefault(); if(cur > 0) items[cur - 1].focus(); else { var sb = document.getElementById('f-psearch'); if(sb) sb.focus(); } }
+      return;
+    }
     if(modalState.type === 'lightbox'){
       if(e.key === 'ArrowLeft' && modalState.i > 0){ modalState.i--; drawLightbox(); }
       else if(e.key === 'ArrowRight' && modalState.i < images.length - 1){ modalState.i++; drawLightbox(); }
