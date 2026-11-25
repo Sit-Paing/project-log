@@ -1530,6 +1530,13 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
           if(isDone(x.p.id)) xlDoneRow(r2, 1, 4);
         });
       }
+      /* older Excel versions (2016/2019) need every font spelled out, not left to the default */
+      [ws, tl, pj, fs].forEach(function(sh){
+        if(!sh) return;
+        sh.eachRow(function(row){ row.eachCell(function(c){
+          var f = c.font; if(f && (!f.name || !f.sz && !f.size)) c.font = Object.assign({ name: 'Calibri', family: 2, scheme: 'minor', size: 11 }, f);
+        }); });
+      });
       tl.orderNo = 0; ws.orderNo = 1; pj.orderNo = 2; if(fs) fs.orderNo = 3;   /* Timeline, Processes, Projects, Files */
       wb.views = [{ activeTab: 0 }];
       return wb.xlsx.writeBuffer();
