@@ -1367,10 +1367,10 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     return row;
   }
   /* rows below a Finished banner can be folded away with Excel's outline [-]/[+] */
-  function xlOutline(sh, from, to, banner){
+  function xlOutline(sh, from, to, banner, hide){
     sh.properties.outlineLevelRow = 1;
-    for(var r = from; r <= to; r++){ var row = sh.getRow(r); row.outlineLevel = 1; if(XL_COLLAPSE_FINISHED) row.hidden = true; }
-    if(banner && XL_COLLAPSE_FINISHED) banner.collapsed = true;
+    for(var r = from; r <= to; r++){ var row = sh.getRow(r); row.outlineLevel = 1; if(hide) row.hidden = true; }
+    if(banner && hide) banner.collapsed = true;
   }
   function xlCount(list, key){ var seen = {}; list.forEach(function(x){ seen[key(x)] = 1; }); return Object.keys(seen).length; }
   function exportExcel(everything){
@@ -1452,7 +1452,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
           else if(dw === 0 || dw === 6) cell.fill = xlFill('FFF0F3EF');
         }
       }
-      var lastP = null, curSubj = null, tlGroup = null, doneBanner = null;
+      var lastP = null, curSubj = null, tlGroup = null, doneBanner = null, curBanner = null;
       var tlBoth = rows.some(function(r){ return isDone(r.p.id); }) && rows.some(function(r){ return !isDone(r.p.id); });
       function endSubj(){ if(curSubj) placeSubjectImages(tl, wb, curSubj.slots, curSubj.start, curSubj.done); curSubj = null; }
       rows.forEach(function(r){
@@ -1463,9 +1463,9 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
             tlGroup = dn;
             var nGrp = xlCount(rows.filter(function(x){ return isDone(x.p.id) === dn; }), function(x){ return x.p.id; });
             var bn = xlBanner(tl, 2, LEAD + N, LEAD, tr(dn ? 'Finished' : 'Current').toUpperCase() + ' (' + nGrp + ')', dn);
-            if(dn) doneBanner = bn;
+            if(dn) doneBanner = bn; else curBanner = bn;
           }
-          if(subjImgs[r.p.id]){ addSubjectHeader(tl, r.p, subjImgs[r.p.id], HEAD, LEAD); curSubj = { slots: subjImgs[r.p.id], start: tl.lastRow.number + 1, done: dn }; }
+          if(subjImgs[r.p.id]){ addSubjectHeader(tl, r.p, subjImgs[r.p.id], HEAD, LEAD); curSubj = { slots: subjImgs[r.p.id], start: tl.lastRow.number + 1, done: true }; }
         }
         var t = r.t, ps = parse(t.planStart), pd = parse(t.planDue), as = parse(t.actStart), ae = parse(t.actEnd);
         var pS = ps != null ? ps : pd, pE = pd != null ? pd : ps, aE = as != null ? (ae != null ? ae : Math.max(as, TODAY)) : null;
@@ -1482,7 +1482,10 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
         if(rd){ xlDoneRow(a, 2, 5); xlDoneRow(a, 7, 8); xlDoneRow(b, 7, 8); }
       });
       endSubj();
-      if(doneBanner) xlOutline(tl, doneBanner.number + 1, tl.lastRow.number, doneBanner);
+      if(doneBanner){
+        if(curBanner) xlOutline(tl, curBanner.number + 1, doneBanner.number - 1, curBanner, false);
+        xlOutline(tl, doneBanner.number + 1, tl.lastRow.number, doneBanner, XL_COLLAPSE_FINISHED);
+      }
       /* sheet 3: one line per project with its sales step and the files attached to each step */
       var pj = wb.addWorksheet(tr('Projects'), { properties: { outlineProperties: { summaryBelow: false } }, views: [{ state: 'frozen', ySplit: 1 }] });
       pj.columns = [{ header: tr('Project'), width: 30 }, { header: tr('Client'), width: 20 }, { header: tr('PO No.'), width: 12 },
@@ -1493,13 +1496,13 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
       pj.getRow(1).height = 30;
       var shown = projects.filter(function(p2){ return everything || rows.some(function(r){ return r.p.id === p2.id; }); });
       shown = shown.filter(function(p2){ return !isDone(p2.id); }).concat(shown.filter(function(p2){ return isDone(p2.id); }));
-      var pjBoth = shown.some(function(p2){ return isDone(p2.id); }) && shown.some(function(p2){ return !isDone(p2.id); }), pjGroup = null, pjBanner = null, pjFrom = 0, pjCols = 5 + STAGES.length * 2;
+      var pjBoth = shown.some(function(p2){ return isDone(p2.id); }) && shown.some(function(p2){ return !isDone(p2.id); }), pjGroup = null, pjBanner = null, pjCur = null, pjFrom = 0, pjCols = 5 + STAGES.length * 2;
       shown.forEach(function(p2){
         var pdn = isDone(p2.id);
         if(pjBoth && pjGroup !== pdn){
           pjGroup = pdn;
           var pb = xlBanner(pj, 1, pjCols, pjCols, tr(pdn ? 'Finished' : 'Current').toUpperCase() + ' (' + shown.filter(function(x){ return isDone(x.id) === pdn; }).length + ')', pdn);
-          if(pdn){ pjBanner = pb; pjFrom = pb.number + 1; }
+          if(pdn){ pjBanner = pb; pjFrom = pb.number + 1; } else pjCur = pb;
         }
         var row = pj.addRow([p2.name, p2.client, p2.po, p2.stage ? tr(stageLabel(p2.stage)) : '', tr(PSTATUS_LABEL[projStatus(p2.id)])].concat(STAGES.reduce(function(a, s2){
           return a.concat([(p2.stageWho || {})[s2[0]] || '', stageFilesOf(p2.id, s2[0]).map(function(f){ return f.name || 'File'; }).join('\n')]);
@@ -1508,7 +1511,10 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
         if(pdn) xlDoneRow(row, 1, pjCols);
         xlPStatus(row.getCell(5), projStatus(p2.id));
       });
-      if(pjBanner) xlOutline(pj, pjFrom, pj.lastRow.number, pjBanner);
+      if(pjBanner){
+        if(pjCur) xlOutline(pj, pjCur.number + 1, pjBanner.number - 1, pjCur, false);
+        xlOutline(pj, pjFrom, pj.lastRow.number, pjBanner, XL_COLLAPSE_FINISHED);
+      }
       /* sheet 4: the attached files, each with a link (only when there are any) */
       var fl = [];
       shown.forEach(function(p2){ STAGES.forEach(function(s2){ stageFilesOf(p2.id, s2[0]).forEach(function(f){ fl.push({ p: p2, s: s2, f: f }); }); }); });
