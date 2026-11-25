@@ -1353,8 +1353,26 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
   function xlDate(n){ return n == null ? null : new Date(n * MS); }
   function xlFill(argb){ return { type: 'pattern', pattern: 'solid', fgColor: { argb: argb } }; }
   /* completed projects are shown struck through in the Excel export */
-  function xlStrike(cell){ var f = cell.font || {}; cell.font = Object.assign({ size: 11 }, f, { strike: true }); }
-  function xlStrikeRow(row, from, to){ for(var c = from; c <= to; c++) xlStrike(row.getCell(c)); }
+  var XL_COLLAPSE_FINISHED = false;   /* true: the Finished block starts collapsed (click the [+] at the left to open it) */
+  function xlDone(cell){ var f = cell.font || {}; cell.font = Object.assign({ size: 11 }, f, { strike: true, color: { argb: 'FF7A7A7A' } }); cell.fill = xlFill('FFF0F0F0'); }
+  function xlDoneRow(row, from, to){ for(var c = from; c <= to; c++) xlDone(row.getCell(c)); }
+  var XL_PST = { done: ['FFDEEFE4', 'FF1E5E39'], progress: ['FFFBEFD2', 'FF7A5200'], todo: ['FFE7ECE8', 'FF58665D'] };
+  function xlPStatus(cell, st){ cell.fill = xlFill(XL_PST[st][0]); cell.font = { bold: true, size: 11, color: { argb: XL_PST[st][1] } }; }
+  function xlBanner(sh, from, to, mergeTo, text, done){
+    var row = sh.addRow([]); row.height = 20;
+    for(var c = from; c <= to; c++) row.getCell(c).fill = xlFill(done ? 'FFD9DDDA' : 'FFC9E4D3');
+    var m = row.getCell(from); m.value = text; m.alignment = { vertical: 'middle' };
+    m.font = { bold: true, size: 11, color: { argb: done ? 'FF58665D' : 'FF1E5C3A' } };
+    if(mergeTo > from) sh.mergeCells(row.number, from, row.number, mergeTo);
+    return row;
+  }
+  /* rows below a Finished banner can be folded away with Excel's outline [-]/[+] */
+  function xlOutline(sh, from, to, banner){
+    sh.properties.outlineLevelRow = 1;
+    for(var r = from; r <= to; r++){ var row = sh.getRow(r); row.outlineLevel = 1; if(XL_COLLAPSE_FINISHED) row.hidden = true; }
+    if(banner && XL_COLLAPSE_FINISHED) banner.collapsed = true;
+  }
+  function xlCount(list, key){ var seen = {}; list.forEach(function(x){ seen[key(x)] = 1; }); return Object.keys(seen).length; }
   function exportExcel(everything){
     var wide = selectedId === ALL || view === 'timeline';
     var list = everything ? allTasks.slice() : filterTasks(wide ? allTasks : tasks);
@@ -1366,6 +1384,8 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
       if(!ts.length) return;
       groupsOf(ts).forEach(function(g){ g.tasks.forEach(function(t){ rows.push({ p: p, t: t }); }); });
     });
+    var isDone = function(pid){ return projStatus(pid) === 'done'; };
+    rows = rows.filter(function(r){ return !isDone(r.p.id); }).concat(rows.filter(function(r){ return isDone(r.p.id); }));   /* current first, finished last */
     var HEAD = { font: { bold: true, color: { argb: 'FFFFFFFF' } }, fill: xlFill('FF1E5C3A'), alignment: { vertical: 'middle', wrapText: true } };
     var subjIds = {}; rows.forEach(function(r){ subjIds[r.p.id] = 1; });
     var subjProjects = projects.filter(function(p2){ return (everything || subjIds[p2.id]) && allImages.some(function(im){ return im.projectId === p2.id; }); });
@@ -1374,7 +1394,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
       wb.creator = 'Project Log';
 
       /* sheet 1: one line per process */
-      var ws = wb.addWorksheet(tr('Processes'), { views: [{ state: 'frozen', ySplit: 1 }] });
+      var ws = wb.addWorksheet(tr('Processes'), { properties: { outlineProperties: { summaryBelow: false } }, views: [{ state: 'frozen', ySplit: 1 }] });
       ws.columns = [
         { header: tr('Project'), width: 30 }, { header: tr('Client'), width: 20 }, { header: tr('PO No.'), width: 12 }, { header: tr('Project status'), width: 16 }, { header: tr('Sales step'), width: 22 },
         { header: tr('Main process'), width: 20 }, { header: tr('Sub process'), width: 24 }, { header: tr('In charge'), width: 16 },
@@ -1389,14 +1409,16 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
         if(pd != null){ if(ae != null && ae > pd) late = ae - pd; else if(ae == null && TODAY > pd) late = TODAY - pd; }
         ws.addRow([r.p.name, r.p.client, r.p.po, tr(PSTATUS_LABEL[projStatus(r.p.id)]), r.p.stage ? tr(stageLabel(r.p.stage)) : '', t.group, t.name, t.incharge,
           xlDate(parse(t.planStart)), xlDate(pd), xlDate(parse(t.actStart)), xlDate(ae), tr(STATUS_LABEL[st]), late]);
-        if(projStatus(r.p.id) === 'done') xlStrikeRow(ws.lastRow, 1, 14);
+        var wr = ws.lastRow, wd = isDone(r.p.id);
+        if(wd){ xlDoneRow(wr, 1, 14); ws.properties.outlineLevelRow = 1; wr.outlineLevel = 1; if(XL_COLLAPSE_FINISHED) wr.hidden = true; }
+        xlPStatus(wr.getCell(4), projStatus(r.p.id));
       });
       [9, 10, 11, 12].forEach(function(c){ ws.getColumn(c).numFmt = 'dd mmm yyyy'; });
       ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 14 } };
 
       /* sheet 2: plan and actual bars over the calendar, like the paper schedule */
       var rg = everything ? rangeOf(list) : calRange(list), r0 = rg[0], r1 = Math.min(rg[1], rg[0] + 730), N = r1 - r0 + 1, LEAD = 8;   /* column A holds only subject images; the rest starts in B */
-      var tl = wb.addWorksheet(tr('Timeline'), { views: [{ state: 'frozen', xSplit: LEAD, ySplit: 3 }] });
+      var tl = wb.addWorksheet(tr('Timeline'), { properties: { outlineProperties: { summaryBelow: false } }, views: [{ state: 'frozen', xSplit: LEAD, ySplit: 3 }] });
       var widths = [40, 30, 20, 24, 16, 9, 12, 12];
       for(var c = 1; c <= LEAD; c++) tl.getColumn(c).width = widths[c - 1];
       for(var n = r0; n <= r1; n++) tl.getColumn(LEAD + 1 + n - r0).width = 3.4;
@@ -1430,12 +1452,20 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
           else if(dw === 0 || dw === 6) cell.fill = xlFill('FFF0F3EF');
         }
       }
-      var lastP = null, curSubj = null;
-      function endSubj(){ if(curSubj) placeSubjectImages(tl, wb, curSubj.slots, curSubj.start); curSubj = null; }
+      var lastP = null, curSubj = null, tlGroup = null, doneBanner = null;
+      var tlBoth = rows.some(function(r){ return isDone(r.p.id); }) && rows.some(function(r){ return !isDone(r.p.id); });
+      function endSubj(){ if(curSubj) placeSubjectImages(tl, wb, curSubj.slots, curSubj.start, curSubj.done); curSubj = null; }
       rows.forEach(function(r){
+        var dn = isDone(r.p.id);
         if(r.p.id !== lastP){
           endSubj(); lastP = r.p.id;
-          if(subjImgs[r.p.id]){ addSubjectHeader(tl, r.p, subjImgs[r.p.id], HEAD, LEAD); curSubj = { slots: subjImgs[r.p.id], start: tl.lastRow.number + 1 }; }
+          if(tlBoth && tlGroup !== dn){
+            tlGroup = dn;
+            var nGrp = xlCount(rows.filter(function(x){ return isDone(x.p.id) === dn; }), function(x){ return x.p.id; });
+            var bn = xlBanner(tl, 2, LEAD + N, LEAD, tr(dn ? 'Finished' : 'Current').toUpperCase() + ' (' + nGrp + ')', dn);
+            if(dn) doneBanner = bn;
+          }
+          if(subjImgs[r.p.id]){ addSubjectHeader(tl, r.p, subjImgs[r.p.id], HEAD, LEAD); curSubj = { slots: subjImgs[r.p.id], start: tl.lastRow.number + 1, done: dn }; }
         }
         var t = r.t, ps = parse(t.planStart), pd = parse(t.planDue), as = parse(t.actStart), ae = parse(t.actEnd);
         var pS = ps != null ? ps : pd, pE = pd != null ? pd : ps, aE = as != null ? (ae != null ? ae : Math.max(as, TODAY)) : null;
@@ -1443,16 +1473,18 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
         var b = tl.addRow(['', '', '', '', '', tr('ACTUAL'), xlDate(as), ae != null ? xlDate(ae) : (as != null ? tr('ongoing') : '')]);
         for(var k = 2; k <= 5; k++) tl.mergeCells(a.number, k, b.number, k);
         for(k = 2; k <= 5; k++) tl.getCell(a.number, k).alignment = { vertical: 'middle', wrapText: true };
-        a.getCell(6).fill = xlFill('FF2C7A4B'); a.getCell(6).font = { bold: true, size: 9, color: { argb: 'FFFFFFFF' } };
-        b.getCell(6).fill = xlFill('FFE6A92B'); b.getCell(6).font = { bold: true, size: 9, color: { argb: 'FF2A1E00' } };
+        var rd = isDone(r.p.id);
+        a.getCell(6).fill = xlFill(rd ? 'FFB9D9C5' : 'FF2C7A4B'); a.getCell(6).font = { bold: true, size: 9, color: { argb: rd ? 'FF4A6355' : 'FFFFFFFF' } };
+        b.getCell(6).fill = xlFill(rd ? 'FFF0D9A0' : 'FFE6A92B'); b.getCell(6).font = { bold: true, size: 9, color: { argb: rd ? 'FF7A6A3A' : 'FF2A1E00' } };
         [a, b].forEach(function(row){ row.getCell(7).numFmt = 'd mmm'; row.getCell(8).numFmt = 'd mmm'; row.getCell(7).alignment = { horizontal: 'left' }; row.getCell(8).alignment = { horizontal: 'left' }; });
-        bars(a, pS, pE, 'FF2C7A4B'); bars(b, as, aE, 'FFE6A92B');
+        bars(a, pS, pE, rd ? 'FFB9D9C5' : 'FF2C7A4B'); bars(b, as, aE, rd ? 'FFF0D9A0' : 'FFE6A92B');
         a.height = 15; b.height = 15;
-        if(projStatus(r.p.id) === 'done'){ xlStrikeRow(a, 2, 5); xlStrikeRow(a, 7, 8); xlStrikeRow(b, 7, 8); }
+        if(rd){ xlDoneRow(a, 2, 5); xlDoneRow(a, 7, 8); xlDoneRow(b, 7, 8); }
       });
       endSubj();
+      if(doneBanner) xlOutline(tl, doneBanner.number + 1, tl.lastRow.number, doneBanner);
       /* sheet 3: one line per project with its sales step and the files attached to each step */
-      var pj = wb.addWorksheet(tr('Projects'), { views: [{ state: 'frozen', ySplit: 1 }] });
+      var pj = wb.addWorksheet(tr('Projects'), { properties: { outlineProperties: { summaryBelow: false } }, views: [{ state: 'frozen', ySplit: 1 }] });
       pj.columns = [{ header: tr('Project'), width: 30 }, { header: tr('Client'), width: 20 }, { header: tr('PO No.'), width: 12 },
         { header: tr('Sales step'), width: 22 }, { header: tr('Project status'), width: 16 }].concat(STAGES.reduce(function(a, s2){
         return a.concat([{ header: tr(s2[1]) + ' – ' + tr('In charge'), width: 18 }, { header: tr(s2[1]) + ' – ' + tr('Files'), width: 28 }]);
@@ -1460,13 +1492,23 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
       pj.getRow(1).eachCell(function(c){ c.font = HEAD.font; c.fill = HEAD.fill; c.alignment = HEAD.alignment; });
       pj.getRow(1).height = 30;
       var shown = projects.filter(function(p2){ return everything || rows.some(function(r){ return r.p.id === p2.id; }); });
+      shown = shown.filter(function(p2){ return !isDone(p2.id); }).concat(shown.filter(function(p2){ return isDone(p2.id); }));
+      var pjBoth = shown.some(function(p2){ return isDone(p2.id); }) && shown.some(function(p2){ return !isDone(p2.id); }), pjGroup = null, pjBanner = null, pjFrom = 0, pjCols = 5 + STAGES.length * 2;
       shown.forEach(function(p2){
+        var pdn = isDone(p2.id);
+        if(pjBoth && pjGroup !== pdn){
+          pjGroup = pdn;
+          var pb = xlBanner(pj, 1, pjCols, pjCols, tr(pdn ? 'Finished' : 'Current').toUpperCase() + ' (' + shown.filter(function(x){ return isDone(x.id) === pdn; }).length + ')', pdn);
+          if(pdn){ pjBanner = pb; pjFrom = pb.number + 1; }
+        }
         var row = pj.addRow([p2.name, p2.client, p2.po, p2.stage ? tr(stageLabel(p2.stage)) : '', tr(PSTATUS_LABEL[projStatus(p2.id)])].concat(STAGES.reduce(function(a, s2){
           return a.concat([(p2.stageWho || {})[s2[0]] || '', stageFilesOf(p2.id, s2[0]).map(function(f){ return f.name || 'File'; }).join('\n')]);
         }, [])));
         row.alignment = { vertical: 'top', wrapText: true };
-        if(projStatus(p2.id) === 'done') xlStrikeRow(row, 1, row.cellCount);
+        if(pdn) xlDoneRow(row, 1, pjCols);
+        xlPStatus(row.getCell(5), projStatus(p2.id));
       });
+      if(pjBanner) xlOutline(pj, pjFrom, pj.lastRow.number, pjBanner);
       /* sheet 4: the attached files, each with a link (only when there are any) */
       var fl = [];
       shown.forEach(function(p2){ STAGES.forEach(function(s2){ stageFilesOf(p2.id, s2[0]).forEach(function(f){ fl.push({ p: p2, s: s2, f: f }); }); }); });
@@ -1479,7 +1521,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
           var r2 = fs.addRow([x.p.name, tr(x.s[1]), x.f.name || 'File', x.f.mime === 'application/pdf' ? 'PDF' : tr('Photo'), '']);
           r2.getCell(5).value = { text: tr('Open'), hyperlink: location.origin + '/api/stage-files/' + x.f.id };
           r2.getCell(5).font = { color: { argb: 'FF0563C1' }, underline: true };
-          if(projStatus(x.p.id) === 'done') xlStrikeRow(r2, 1, 4);
+          if(isDone(x.p.id)) xlDoneRow(r2, 1, 4);
         });
       }
       tl.orderNo = 0; ws.orderNo = 1; pj.orderNo = 2; if(fs) fs.orderNo = 3;   /* Timeline, Processes, Projects, Files */
@@ -1530,7 +1572,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     var hr = tl.addRow(['', tr('Subject') + ' – ' + p2.name]);
     tl.mergeCells(hr.number, 2, hr.number, LEAD);
     var hc = tl.getCell(hr.number, 2); hc.font = HEAD.font; hc.fill = HEAD.fill; hc.alignment = { vertical: 'middle' };
-    if(projStatus(p2.id) === 'done') xlStrike(hc);
+    if(projStatus(p2.id) === 'done'){ hc.fill = xlFill('FF8A968E'); hc.font = { bold: true, strike: true, color: { argb: 'FFFFFFFF' } }; }
     hr.height = 22;
     var lines = [];
     if(p2.notes) lines.push(p2.notes);
@@ -1543,7 +1585,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
       nr.height = Math.min(300, 15 * Math.max(1, Math.ceil(txt.length / 110) + (txt.split('\n').length - 1)));
     }
   }
-  function placeSubjectImages(tl, wb, slots, startRow){
+  function placeSubjectImages(tl, wb, slots, startRow, twoCell){
     var MAXW = 280, MAXH = 210, GAP = 6, items = [], total = 0;
     slots.forEach(function(sl){
       if(!sl.x) return;
@@ -1556,7 +1598,9 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     var y = 2;
     items.forEach(function(it){
       var id = wb.addImage({ buffer: it.sl.x.buffer, extension: it.sl.x.extension });
-      tl.addImage(id, { tl: { nativeCol: 0, nativeColOff: 3 * 9525, nativeRow: startRow - 1 + Math.floor(y / XL_ROW_PX), nativeRowOff: (y % XL_ROW_PX) * 9525 }, ext: { width: it.w, height: it.h }, editAs: 'oneCell' });
+      var at = { nativeCol: 0, nativeColOff: 3 * 9525, nativeRow: startRow - 1 + Math.floor(y / XL_ROW_PX), nativeRowOff: (y % XL_ROW_PX) * 9525 };
+      if(twoCell) tl.addImage(id, { tl: at, br: { nativeCol: 0, nativeColOff: (3 + it.w) * 9525, nativeRow: startRow - 1 + Math.floor((y + it.h) / XL_ROW_PX), nativeRowOff: ((y + it.h) % XL_ROW_PX) * 9525 }, editAs: 'twoCell' });
+      else tl.addImage(id, { tl: at, ext: { width: it.w, height: it.h }, editAs: 'oneCell' });
       y += it.h + GAP;
     });
   }
