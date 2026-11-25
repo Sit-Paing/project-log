@@ -111,6 +111,9 @@ button,input,select{font:inherit;color:inherit}
 .mp-row{display:flex;align-items:center;gap:12px;padding:10px 2px;border-bottom:1px solid var(--line-soft)}
 .mp-row input[type=checkbox],.mp-bar input[type=checkbox]{width:20px;height:20px;flex:none;accent-color:var(--plan)}
 .mp-info{flex:1;min-width:0}
+.mp-sec{position:sticky;top:0;z-index:1;background:var(--surface-2);padding:6px 8px;margin-top:6px;font-weight:700;font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--line-soft)}
+.mp-sec:first-child{margin-top:0}
+.mp-none{margin:8px 2px}
 .mp-info b{display:block;overflow-wrap:anywhere}
 .mp-info .sub{display:block;color:var(--muted);font-size:12px;overflow-wrap:anywhere}
 .sheet.wide{width:min(860px,100%)}
@@ -638,6 +641,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     'No step yet': ['ยังไม่มีขั้นตอน', 'အဆင့် မရှိသေး'],
     'Any step': ['ทุกขั้นตอน', 'အဆင့် အားလုံး'],
     'Current': ['ปัจจุบัน', 'လက်ရှိ'],
+    'None': ['ไม่มี', 'မရှိပါ'],
     'Upcoming': ['ที่จะถึง', 'လာမည့်'],
     'Set as current': ['ตั้งเป็นขั้นตอนปัจจุบัน', 'လက်ရှိအဖြစ် သတ်မှတ်ရန်'],
     'Add photo or PDF': ['เพิ่มรูปหรือ PDF', 'ဓာတ်ပုံ သို့မဟုတ် PDF ထည့်ရန်'],
@@ -1327,6 +1331,9 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
   }
   function xlDate(n){ return n == null ? null : new Date(n * MS); }
   function xlFill(argb){ return { type: 'pattern', pattern: 'solid', fgColor: { argb: argb } }; }
+  /* completed projects are shown struck through in the Excel export */
+  function xlStrike(cell){ var f = cell.font || {}; cell.font = Object.assign({ size: 11 }, f, { strike: true }); }
+  function xlStrikeRow(row, from, to){ for(var c = from; c <= to; c++) xlStrike(row.getCell(c)); }
   function exportExcel(everything){
     var wide = selectedId === ALL || view === 'timeline';
     var list = everything ? allTasks.slice() : filterTasks(wide ? allTasks : tasks);
@@ -1361,6 +1368,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
         if(pd != null){ if(ae != null && ae > pd) late = ae - pd; else if(ae == null && TODAY > pd) late = TODAY - pd; }
         ws.addRow([r.p.name, r.p.client, r.p.po, tr(PSTATUS_LABEL[projStatus(r.p.id)]), r.p.stage ? tr(stageLabel(r.p.stage)) : '', t.group, t.name, t.incharge,
           xlDate(parse(t.planStart)), xlDate(pd), xlDate(parse(t.actStart)), xlDate(ae), tr(STATUS_LABEL[st]), late]);
+        if(projStatus(r.p.id) === 'done') xlStrikeRow(ws.lastRow, 1, 14);
       });
       [9, 10, 11, 12].forEach(function(c){ ws.getColumn(c).numFmt = 'dd mmm yyyy'; });
       ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 14 } };
@@ -1419,6 +1427,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
         [a, b].forEach(function(row){ row.getCell(7).numFmt = 'd mmm'; row.getCell(8).numFmt = 'd mmm'; row.getCell(7).alignment = { horizontal: 'left' }; row.getCell(8).alignment = { horizontal: 'left' }; });
         bars(a, pS, pE, 'FF2C7A4B'); bars(b, as, aE, 'FFE6A92B');
         a.height = 15; b.height = 15;
+        if(projStatus(r.p.id) === 'done'){ xlStrikeRow(a, 2, 5); xlStrikeRow(a, 7, 8); xlStrikeRow(b, 7, 8); }
       });
       endSubj();
       /* sheet 3: one line per project with its sales step and the files attached to each step */
@@ -1435,6 +1444,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
           return a.concat([(p2.stageWho || {})[s2[0]] || '', stageFilesOf(p2.id, s2[0]).map(function(f){ return f.name || 'File'; }).join('\n')]);
         }, [])));
         row.alignment = { vertical: 'top', wrapText: true };
+        if(projStatus(p2.id) === 'done') xlStrikeRow(row, 1, row.cellCount);
       });
       /* sheet 4: the attached files, each with a link (only when there are any) */
       var fl = [];
@@ -1448,6 +1458,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
           var r2 = fs.addRow([x.p.name, tr(x.s[1]), x.f.name || 'File', x.f.mime === 'application/pdf' ? 'PDF' : tr('Photo'), '']);
           r2.getCell(5).value = { text: tr('Open'), hyperlink: location.origin + '/api/stage-files/' + x.f.id };
           r2.getCell(5).font = { color: { argb: 'FF0563C1' }, underline: true };
+          if(projStatus(x.p.id) === 'done') xlStrikeRow(r2, 1, 4);
         });
       }
       tl.orderNo = 0; ws.orderNo = 1; pj.orderNo = 2; if(fs) fs.orderNo = 3;   /* Timeline, Processes, Projects, Files */
@@ -1498,6 +1509,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     var hr = tl.addRow(['', tr('Subject') + ' – ' + p2.name]);
     tl.mergeCells(hr.number, 2, hr.number, LEAD);
     var hc = tl.getCell(hr.number, 2); hc.font = HEAD.font; hc.fill = HEAD.fill; hc.alignment = { vertical: 'middle' };
+    if(projStatus(p2.id) === 'done') xlStrike(hc);
     hr.height = 22;
     var lines = [];
     if(p2.notes) lines.push(p2.notes);
@@ -1737,6 +1749,12 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
     var ns = modalEl.querySelector('.sheet'); if(ns) ns.scrollTop = top;
   }
   function finishedProjects(){ return projects.slice(); }
+  function mpRow(p){
+    var n = projTasks(p.id).length, im = allImages.filter(function(x){ return x.projectId === p.id; }).length;
+    return '<div class="mp-row"><input type="checkbox" class="mp-chk" data-id="' + esc(p.id) + '" id="mp-' + esc(p.id) + '" aria-label="Select ' + esc(p.name || 'Untitled') + '">' +
+      '<label class="mp-info" for="mp-' + esc(p.id) + '"><b class="mp-u">' + esc(p.name || 'Untitled') + '</b>' + projPill(p.id) + '<span class="sub"><span class="mp-u">' + esc(p.client || 'No client') + (p.po ? ' · PO ' + esc(p.po) : '') + '</span> · <span>' + n + (n === 1 ? ' process' : ' processes') + '</span> · <span>' + im + (im === 1 ? ' photo' : ' photos') + '</span></span></label>' +
+      '<button type="button" class="btn danger" data-act="mp-del-one" data-id="' + esc(p.id) + '">Delete</button></div>';
+  }
   function openManageModal(){
     modalState = { type: 'manage', sel: {} };
     var fin = finishedProjects();
@@ -1746,11 +1764,10 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
       h += '<p class="sub-empty">There are no projects yet.</p>';
     } else {
       h += '<div class="mp-bar"><label><input type="checkbox" id="mp-all"> Select all</label><span class="mp-n mono" id="mp-n">0 selected</span></div><div class="mp-list">';
-      fin.forEach(function(p){
-        var n = projTasks(p.id).length, im = allImages.filter(function(x){ return x.projectId === p.id; }).length;
-        h += '<div class="mp-row"><input type="checkbox" class="mp-chk" data-id="' + esc(p.id) + '" id="mp-' + esc(p.id) + '" aria-label="Select ' + esc(p.name || 'Untitled') + '">' +
-          '<label class="mp-info" for="mp-' + esc(p.id) + '"><b class="mp-u">' + esc(p.name || 'Untitled') + '</b>' + projPill(p.id) + '<span class="sub"><span class="mp-u">' + esc(p.client || 'No client') + (p.po ? ' · PO ' + esc(p.po) : '') + '</span> · <span>' + n + (n === 1 ? ' process' : ' processes') + '</span> · <span>' + im + (im === 1 ? ' photo' : ' photos') + '</span></span></label>' +
-          '<button type="button" class="btn danger" data-act="mp-del-one" data-id="' + esc(p.id) + '">Delete</button></div>';
+      var cur = fin.filter(function(p){ return projStatus(p.id) !== 'done'; }), done = fin.filter(function(p){ return projStatus(p.id) === 'done'; });
+      [['Current', cur], ['Finished', done]].forEach(function(g){
+        h += '<div class="mp-sec">' + g[0] + ' <span class="mono">' + g[1].length + '</span></div>';
+        h += g[1].length ? g[1].map(mpRow).join('') : '<p class="sub-empty mp-none">None</p>';
       });
       h += '</div>';
     }
