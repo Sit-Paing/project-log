@@ -69,6 +69,17 @@ button,input,select{font:inherit;color:inherit}
 .brand{display:flex;align-items:center;gap:12px;margin-right:auto;min-width:0;flex-wrap:wrap}
 .brand .logo{height:34px;width:auto;max-width:100%;display:block;background:#fff;border:1px solid var(--line);border-radius:6px;padding:4px 10px}
 .brand .appname{font-family:var(--font-display);font-weight:700;font-size:22px;letter-spacing:.02em;text-transform:uppercase;white-space:nowrap}
+.pick{position:relative;min-width:0}
+.pick-btn{display:flex;align-items:center;justify-content:space-between;gap:8px;width:min(420px,calc(100vw - 32px));padding:7px 10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);font:inherit;cursor:pointer;text-align:left}
+.pick-btn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pick-pop{position:absolute;left:0;top:calc(100% + 4px);z-index:40;width:min(520px,calc(100vw - 32px));display:flex;flex-direction:column;max-height:70vh;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.pick-list{overflow:auto}
+.pick-row{display:flex;align-items:center;gap:8px;padding:0 10px}
+.pick-row:hover{background:var(--surface-2)}
+.pick-row input{width:18px;height:18px;flex:none;accent-color:var(--plan)}
+.pick-item{flex:1;min-width:0;text-align:left;border:0;background:none;font:inherit;color:var(--ink);padding:9px 4px;cursor:pointer;overflow-wrap:anywhere}
+.pick-item.on{font-weight:700;color:var(--accent)}
+.pick-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;border-top:1px solid var(--line)}
 .switch select{min-width:0;max-width:100%;width:min(420px,calc(100vw - 32px));padding:7px 10px;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:7px 13px;border-radius:6px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:500;white-space:nowrap}
 .btn:hover{background:var(--surface-2)}
@@ -361,7 +372,7 @@ input[type=date]{min-height:38px;max-width:100%}
   .btn{min-height:42px}
   .mini{min-height:32px;padding:4px 10px}
   .st-sel{min-height:34px}
-  .fl select,.fl input,.fld input,.fld select,.zoom select,.switch select{min-height:42px}
+  .fl select,.fl input,.fld input,.fld select,.zoom select,.switch select,.pick-btn{min-height:42px}
   #calSlider{height:42px}
   .pname{padding:4px 0}
 }
@@ -425,7 +436,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
 
   var projects = [], allTasks = [], tasks = [], allImages = [], images = [], allStageFiles = [];
   var projectsLoaded = false, loadFailed = false, lastSig = '';
-  var selectedId = null, needScroll = false;
+  var selectedId = null, needScroll = false, pickOpen = false;
   var editKey = '', canEdit = false;
   var modalState = null;
   var ALL = '__all__';
@@ -1138,14 +1149,24 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
       topBar += '<button class="btn" data-act="open-workload">Workload</button>';
     }
     if(projects.length){
-      var opts = '';
-      if(projects.length > 1) opts += '<option value="' + ALL + '"' + (isAll ? ' selected' : '') + '>All projects (' + projects.length + ')</option>';
-      projects.forEach(function(p){
-        if(filters.client && (p.client || '') !== filters.client && p.id !== selectedId) return;
-        opts += '<option value="' + esc(p.id) + '"' + (p.id === selectedId ? ' selected' : '') + '>' + esc(p.name || 'Untitled') + (p.po ? ' · PO ' + esc(p.po) : '') + '</option>';
-      });
-      topBar += '<button class="btn" data-act="search-projects" title="Search projects" aria-label="Search projects"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg>Search</button>';
-      topBar += '<label class="switch"><span class="sr">Project</span><select id="projectSelect">' + opts + '</select></label>';
+      var vis = projects.filter(function(p){ return !(filters.client && (p.client || '') !== filters.client && p.id !== selectedId); });
+      var curP = vis.filter(function(p){ return projStatus(p.id) !== 'done'; }), doneP = vis.filter(function(p){ return projStatus(p.id) === 'done'; });
+      var sel = currentProject(), label = isAll ? tr('All projects') + ' (' + projects.length + ')' : (sel ? (sel.name || 'Untitled') + (sel.po ? ' · PO ' + sel.po : '') : '');
+      topBar += '<div class="pick"><button type="button" class="pick-btn" data-act="pick-toggle" aria-haspopup="true" aria-expanded="' + pickOpen + '" aria-label="Project"><span class="pname">' + esc(label) + '</span><span aria-hidden="true">▾</span></button>';
+      if(pickOpen){
+        topBar += '<div class="pick-pop" id="pickPop"><div class="pick-list">';
+        if(projects.length > 1) topBar += '<div class="pick-row"><button type="button" class="pick-item' + (isAll ? ' on' : '') + '" data-act="pick-go" data-id="' + ALL + '">All projects (' + projects.length + ')</button></div>';
+        [['Current', curP], ['Finished', doneP]].forEach(function(g){
+          topBar += '<div class="mp-sec">' + g[0] + ' <span class="mono">' + g[1].length + '</span></div>';
+          if(!g[1].length) topBar += '<p class="sub-empty mp-none">None</p>';
+          g[1].forEach(function(p){
+            topBar += '<div class="pick-row">' + (canEdit ? '<input type="checkbox" class="pick-chk" data-id="' + esc(p.id) + '" aria-label="Select ' + esc(p.name || 'Untitled') + '">' : '') +
+              '<button type="button" class="pick-item pname' + (!isAll && p.id === selectedId ? ' on' : '') + '" data-act="pick-go" data-id="' + esc(p.id) + '">' + esc(p.name || 'Untitled') + (p.po ? ' · PO ' + esc(p.po) : '') + '</button></div>';
+          });
+        });
+        topBar += '</div>' + (canEdit ? '<div class="pick-foot"><span class="mono" id="pick-n">0 selected</span><button type="button" class="btn danger" data-act="pick-del" id="pick-del" disabled>Delete selected</button></div>' : '') + '</div>';
+      }
+      topBar += '</div>';
     }
     topBar += '<label class="lang"><span class="sr">Language</span><select id="langSel"><option value="en"' + (lang === 'en' ? ' selected' : '') + '>English</option><option value="th"' + (lang === 'th' ? ' selected' : '') + '>ไทย</option><option value="my"' + (lang === 'my' ? ' selected' : '') + '>မြန်မာ</option></select></label>';
     if(canEdit){
@@ -2188,8 +2209,18 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
   /* ---------- events ---------- */
   document.addEventListener('click', function(e){
     var el = e.target.closest('[data-act]');
+    if(pickOpen && !e.target.closest('.pick')){ pickOpen = false; render(); }
     if(!el) return;
     var act = el.dataset.act;
+    if(act === 'pick-toggle'){ pickOpen = !pickOpen; render(); return; }
+    if(act === 'pick-go'){ pickOpen = false; selectProject(el.dataset.id); window.scrollTo(0, 0); return; }
+    if(act === 'pick-del' && canEdit){
+      armDelete(el, 'Delete selected', function(){
+        var ids = Array.prototype.map.call(document.querySelectorAll('.pick-chk:checked'), function(c){ return c.dataset.id; });
+        pickOpen = false; if(ids.length) deleteProjects(ids); else render();
+      });
+      return;
+    }
     if(act === 'scrim'){ if(e.target === el) closeModal(); return; }
     if(act === 'close-modal'){ closeModal(); return; }
     if(act === 'retry'){ loadFailed = false; render(); load(true); return; }
@@ -2303,6 +2334,12 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
   document.addEventListener('change', function(e){
     var tid = e.target.id || '';
     if(e.target.classList && e.target.classList.contains('mp-chk')){ mpSync(); return; }
+    if(e.target.classList && e.target.classList.contains('pick-chk')){
+      var pn = document.querySelectorAll('.pick-chk:checked').length, pb = document.getElementById('pick-del'), pc = document.getElementById('pick-n');
+      if(pc) pc.textContent = pn + ' selected';
+      if(pb){ pb.disabled = pn === 0; pb.dataset.armed = ''; pb.classList.remove('armed'); pb.textContent = tr('Delete selected'); }
+      return;
+    }
     if(tid === 'wl-all'){ modalState.all = e.target.checked; drawWorkload(); return; }
     if(tid === 'mp-all'){
       Array.prototype.forEach.call(modalEl.querySelectorAll('.mp-chk'), function(c){ c.checked = e.target.checked; });
@@ -2348,6 +2385,7 @@ html[lang="th"] .sched td.dt,html[lang="my"] .sched td.dt{font-size:12px}
       if(sw){ e.preventDefault(); sw.scrollBy({ left: (e.key === 'ArrowLeft' ? -1 : 1) * DW * 7, behavior: 'smooth' }); }
       return;
     }
+    if(pickOpen && e.key === 'Escape'){ pickOpen = false; render(); return; }
     if(!modalState) return;
     if(e.key === 'Escape'){ closeModal(); return; }
     if(modalState.type === 'search'){
